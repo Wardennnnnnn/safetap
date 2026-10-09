@@ -55,6 +55,7 @@ function environment() {
       password: 'SafeTapDemo123!'
     })
   };
+  f.syncBatches = [];
   f.user = f.db.users[0];
   f.config = {demo: true, qrAvailable: false, ocrAvailable: false};
   const c = D.openClass(f.db, f.user, {
@@ -136,7 +137,11 @@ function environment() {
       };else if (url.endsWith('/state')) {
         if (failState) throw new Error('Dashboard connection lost');
         data = D.snapshot(f.db, f.user);
-      } else if (url.endsWith('/checkins')) data = D.checkin(f.db, f.user, JSON.parse(options.body));else if (url.endsWith('/sync')) {
+      } else if (url.endsWith('/offline')) data = {
+        userId: f.user.id, event: f.db.events.find(e => e.status === 'active'),
+        students: structuredClone(f.db.students.filter(s => s.active)), blocks: structuredClone(f.db.blocks), preparedAt: D.now()
+      };else if (url.endsWith('/checkins')) data = D.checkin(f.db, f.user, JSON.parse(options.body));else if (url.endsWith('/sync')) {
+        f.syncBatches.push(JSON.parse(options.body).scans.length);
         assert.equal(options.headers['X-CSRF-Token'], 'test', 'uploads require the current authenticated session token');
         data = {
         results: JSON.parse(options.body).scans.map(s => ({
@@ -333,6 +338,71 @@ test('offline reload recovers the session before uploading and refuses another a
   await assert.rejects(other.run('syncQueue()'), /account that saved/);
   assert.equal(other.run('S.queue.length'), 1);
   assert.equal(other.db.checkins.length, 0);
+});
+
+test('online refresh automatically saves NFC and QR IDs; offline reload retains scans', async () => {
+  const e = await ready();
+  e.db.students[0].nfcUid = '04AABBCC';
+  e.setNetwork(true);
+  e.run('S.pack=null;S.csrf="test"');
+  await e.run('refresh(false)');
+  assert.equal(e.idb.rows.get('pack').event.id, e.event.id);
+  assert.equal(e.idb.rows.get('pack').students[0].nfcUid, '04AABBCC');
+  assert.equal(e.idb.rows.get('pack').students[0].qrToken, e.db.students[0].qrToken);
+  e.setNetwork(false);
+  e.run('S.online=false');
+  await e.run('record({method:"nfc",credential:"04:AA:BB:CC"})');
+  assert.equal(e.idb.rows.get('queue').length, 1);
+  await e.run('boot()');
+  assert.equal(e.run('S.queue.length'), 1);
+  assert.equal(e.run('S.pack.event.id'), e.event.id);
+  e.setNetwork(true);
+  await e.run('syncQueue()');
+  assert.equal(e.run('S.queue.length'), 0);
+  assert.equal(D.eventSummary(e.db, e.event.id).safe, 1);
+});
+
+test('automatic preparation caches scanner assets once without interrupting NFC', async () => {
+  const e = await ready();
+  const cached = new Set();
+  e.context.navigator.serviceWorker = {register: async () => {}, ready: Promise.resolve({})};
+  e.context.navigator.storage = {persist: async () => true};
+  e.context.caches = {open: async () => ({match: async key => cached.has(key), add: async key => cached.add(key)})};
+  e.context.fetch = async () => ({ok: true, json: async () => ['/vendor/qr.js', '/vendor/ocr.wasm']});
+  e.run('S.config={qrAvailable:true,ocrAvailable:true};S.nfcController=new AbortController();S.nfcState="reading"');
+  await e.run('cacheOfflineAssets()');
+  assert.deepEqual([...cached], ['/vendor/qr.js', '/vendor/ocr.wasm']);
+  assert.equal(e.run('S.offlineAssets'), true);
+  assert.equal(e.run('S.nfcController.signal.aborted'), false);
+  assert.match(e.run('offlineReadiness()'), /saved automatically/);
+});
+
+test('sync refreshes stale session tokens, recovers legacy auth errors and drains all batches', async () => {
+  const e = await ready();
+  e.context.pendingScans = Array.from({length: 105}, (_, i) => ({
+    submissionId: randomUUID(), eventId: e.event.id, ownerId: e.user.id,
+    studentId: e.db.students[0].id, method: 'manual', confirmed: true, capturedAt: D.now(),
+    error: i % 2 ? 'Session verification failed. Refresh and sign in again.' : 'Please refresh and sign in again. Your saved scans will stay on this phone.'
+  }));
+  e.run('S.queue=pendingScans;S.csrf="old-token";S.page="scanner";S.nfcController=new AbortController();S.nfcState="reading"');
+  e.setNetwork(true);
+  await e.run('syncQueue()');
+  assert.deepEqual(e.syncBatches, [100, 5]);
+  assert.equal(e.run('S.queue.length'), 0);
+  assert.equal(e.run('S.csrf'), 'test');
+  assert.equal(e.run('S.nfcController.signal.aborted'), false);
+  assert.equal(D.eventSummary(e.db, e.event.id).safe, 1);
+});
+
+test('closing an event clears only its offline pack, preserving pending records for review', async () => {
+  const e = await ready();
+  await e.run(`record({method:'manual',studentId:'${e.db.students[0].id}',confirmed:true})`);
+  e.db.events[0].status = 'closed';
+  e.setNetwork(true);
+  await e.run('refresh(false)');
+  assert.equal(e.run('S.pack'), null);
+  assert.equal(e.idb.rows.get('queue').length, 1);
+  assert.equal(e.idb.rows.get('queue')[0].eventId, e.event.id);
 });
 
 test('ID photo offers distinct file and camera inputs without recording an arrival', async () => {

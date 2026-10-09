@@ -30,6 +30,8 @@ const S = {
   nfcState: 'idle',
   queue: [],
   pack: null,
+  offlineError: '',
+  offlineAssets: false,
   report: null,
   socket: null,
   scanner: null,
@@ -105,10 +107,12 @@ function updateConnectionUI() {
     connection.classList.toggle('offline', !S.online);
   }
   for (const button of document.querySelectorAll?.('[data-action="sync"]') || []) {
-    button.disabled = !S.online || !S.queue.length || Boolean(syncQueue.running);
+    button.disabled = !navigator.onLine || !S.queue.length || Boolean(syncQueue.running);
   }
   const count = $('#queue-count');
   if (count) count.innerHTML = badge(S.queue.length + ' waiting', S.queue.length ? 'amber' : '');
+  const readiness = $('#offline-readiness');
+  if (readiness) readiness.innerHTML = offlineReadiness();
 }
 
 const dbReady = new Promise((resolve, reject) => {
@@ -305,7 +309,7 @@ function scanner() {
   else if (S.method === 'qr') reader = `<div id="camera"></div><div class="scan-target"><div class="scan-icon">${icon('qr')}</div><h2>Scan a student QR code</h2><p>Point the camera at the printed card or the code on the student’s phone.</p>${btn('Open camera', 'qr', 'primary', !S.config.qrAvailable || !event ? 'disabled' : '')}</div>${!S.config.qrAvailable ? '<div class="notice">QR scanning is not set up yet. Use NFC or student search.</div>' : ''}`;
   else if (S.method === 'manual') reader = `<label class="field">Find a student<input id="scan-search" type="search" placeholder="Name or student number" autocomplete="off"></label><div id="candidates">${empty('Search for a student', 'Enter at least two characters, then confirm their arrival.')}</div>`;
   else reader = `<div class="scan-target"><div class="scan-icon">${icon('photo')}</div><h2>Read a student ID photo</h2><p>Take a clear photo of the name and student number. Check the match before recording the arrival.</p><div class="actions photo-actions">${btn('Choose file', 'choose-photo', '', !S.config.ocrAvailable || !event ? 'disabled' : '')}${btn('Take photo', 'take-photo', 'primary', !S.config.ocrAvailable || !event ? 'disabled' : '')}</div><input id="ocr-file" type="file" accept="image/*" hidden ${!S.config.ocrAvailable || !event ? 'disabled' : ''}><input id="ocr-camera" type="file" accept="image/*" capture="environment" hidden ${!S.config.ocrAvailable || !event ? 'disabled' : ''}><p class="reader-help">Choose an existing image or use your phone’s camera. You’ll confirm the match before an arrival is saved.</p></div><div id="ocr-status" class="muted" role="status"></div><div id="candidates"></div>${!S.config.ocrAvailable ? '<div class="notice">ID photo scanning is not set up yet. Use NFC or student search.</div>' : ''}`;
-  return heading('', 'Scan student IDs', 'At the assembly point, scan only students who are here with you.') + `<div class="scanner-layout"><section class="card scanner-card"><div class="card-header"><div><h2>${event ? esc(event.name) : 'No evacuation selected'}</h2><p>${event ? esc(event.area) : 'Start an evacuation or download an active event before scanning.'}</p></div>${badge(event ? S.online ? 'Ready to scan' : 'Saving on phone' : 'Not ready', event ? S.online ? 'green' : 'amber' : '')}</div><div class="card-body"><div class="scanner-methods" role="group" aria-label="Scanning method">${methods.map(([id, symbol, label]) => btn(icon(symbol) + label, 'method', id === S.method ? 'active' : '', `data-method="${id}" aria-pressed="${id === S.method}"`)).join('')}</div><div id="scan-result" role="status" aria-live="polite" aria-atomic="true"></div>${reader}</div></section><aside class="scanner-support"><section class="card"><div class="card-header"><div><h2>Saved on this phone</h2><p>Waiting to upload when connected.</p></div><span id="queue-count">${badge(S.queue.length + ' waiting', S.queue.length ? 'amber' : '')}</span></div><div class="card-body"><div id="device-queue">${queueList()}</div>${btn('Upload saved records', 'sync', 'full-button', S.online && S.queue.length ? '' : 'disabled')}<p class="reader-help">Records upload automatically when the connection returns.</p></div></section>${active ? `<div class="scanner-summary"><span><strong>${active.safe}</strong> arrived safely</span><span><strong>${active.unaccounted}</strong> still missing</span></div>` : ''}<div class="scanner-note"><h3>One student, one count.</h3><p>Scanning the same ID again does not add another arrival.</p>${S.pack ? `<p class="muted">Offline event downloaded ${fmt(S.pack.preparedAt)}.</p>` : `<p>Download the student list before scanning without a connection.</p>${btn('Prepare offline scanning', 'prepare', '', S.online && event ? '' : 'disabled')}`}</div></aside></div>`;
+  return heading('', 'Scan student IDs', 'At the assembly point, scan only students who are here with you.') + `<div class="scanner-layout"><section class="card scanner-card"><div class="card-header"><div><h2>${event ? esc(event.name) : 'No evacuation selected'}</h2><p>${event ? esc(event.area) : 'Start an evacuation or download an active event before scanning.'}</p></div>${badge(event ? S.online ? 'Ready to scan' : 'Saving on phone' : 'Not ready', event ? S.online ? 'green' : 'amber' : '')}</div><div class="card-body"><div class="scanner-methods" role="group" aria-label="Scanning method">${methods.map(([id, symbol, label]) => btn(icon(symbol) + label, 'method', id === S.method ? 'active' : '', `data-method="${id}" aria-pressed="${id === S.method}"`)).join('')}</div><div id="scan-result" role="status" aria-live="polite" aria-atomic="true"></div>${reader}</div></section><aside class="scanner-support"><section class="card"><div class="card-header"><div><h2>Saved on this phone</h2><p>Waiting to upload when connected.</p></div><span id="queue-count">${badge(S.queue.length + ' waiting', S.queue.length ? 'amber' : '')}</span></div><div class="card-body"><div id="device-queue">${queueList()}</div>${btn('Upload saved records', 'sync', 'full-button', navigator.onLine && S.queue.length ? '' : 'disabled')}<p class="reader-help">Records upload automatically when the connection returns.</p></div></section>${active ? `<div class="scanner-summary"><span><strong>${active.safe}</strong> arrived safely</span><span><strong>${active.unaccounted}</strong> still missing</span></div>` : ''}<div class="scanner-note"><h3>One student, one count.</h3><p>Scanning the same ID again does not add another arrival.</p><div id="offline-readiness" role="status">${offlineReadiness()}</div></div></aside></div>`;
 }
 function students() {
   return heading('Campus directory', 'Students & blocks', 'Manage students, class blocks, NFC IDs, and QR cards.', btn('Import CSV', 'import') + btn('+ Add block', 'add-block') + btn('+ Add student', 'add-student', 'primary')) + `<section class="card"><div class="card-header"><h2 class="section-title">${icon('students')}Student directory</h2>${badge(S.data.students.length + ' registered')}</div><div class="filter-row"><input id="directory-search" placeholder="Search name or student number" aria-label="Search directory"></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Program / block</th><th>Status</th><th>Student IDs</th></tr></thead><tbody id="directory-body">${directoryRows('')}</tbody></table></div></section><section class="card"><div class="card-header"><h2 class="section-title">${icon('building')}Academic blocks</h2></div><div class="table-wrap"><table><thead><tr><th>Program / code</th><th>Academic term</th><th>Students</th></tr></thead><tbody>${S.data.blocks.map(b => `<tr><td>${esc(b.program + ' ' + b.code)}</td><td>${esc(b.term)}</td><td>${S.data.students.filter(s => s.blockId === b.id && s.active).length}</td></tr>`).join('')}</tbody></table></div></section>`;
@@ -329,7 +333,7 @@ function queueList() {
 }
 function offline() {
   const prepared = Boolean(S.pack);
-  return heading('', 'Offline records', 'Keep scanning if your connection drops. Upload saved records when you reconnect.', btn(prepared ? 'Update offline download' : 'Prepare offline scanning', 'prepare', 'primary', S.online && S.data.active ? '' : 'disabled')) + `<div class="split"><section class="card"><div class="card-header"><h2>Ready for offline scanning?</h2>${badge(prepared ? 'Downloaded' : 'Not downloaded', prepared ? 'green' : 'amber')}</div><div class="card-body"><div class="readiness">${icon(prepared ? 'check' : 'offline')}<div><strong>Event and student list</strong><p>${prepared ? `${esc(S.pack.event.name)} · ${S.pack.students.length} students<br>Downloaded ${fmt(S.pack.preparedAt)}` : 'Start an evacuation, then download its student list to this phone.'}</p></div></div><div class="readiness">${icon('nfc')}<div><strong>NFC scanning</strong><p>Available on supported Android browsers. Your student list must include the scanned ID.</p></div></div><div class="readiness">${icon('qr')}<div><strong>QR camera</strong><p>${S.config.qrAvailable ? 'Available. Download before going offline.' : 'Not set up on the server yet.'}</p></div></div><div class="readiness">${icon('photo')}<div><strong>ID photo reader</strong><p>${S.config.ocrAvailable ? 'Available. Download before going offline.' : 'Not set up on the server yet.'}</p></div></div><div class="notice info"><strong>Before you leave</strong><p>Keep this account signed in. Download again when the event or student IDs change. Arrivals appear on other devices after they reach the server.</p></div></div></section><section class="card"><div class="card-header"><div><h2 class="section-title">${icon('offline')}Waiting to upload</h2><p>${S.queue.length} saved record${S.queue.length === 1 ? '' : 's'}</p></div>${btn('Upload saved records', 'sync', '', S.online && S.queue.length ? '' : 'disabled')}</div><div class="card-body">${queueList()}<p class="muted">If the event has ended, late records need an administrator’s approval.</p></div></section></div>`;
+  return heading('', 'Offline records', 'Keep scanning if your connection drops. Upload saved records when you reconnect.', btn('Refresh offline copy', 'prepare', 'primary', S.online && S.data.active ? '' : 'disabled')) + `<div class="split"><section class="card"><div class="card-header"><h2>Ready for offline scanning?</h2>${badge(prepared ? 'Downloaded' : 'Not downloaded', prepared ? 'green' : 'amber')}</div><div class="card-body"><div class="readiness">${icon(prepared ? 'check' : 'offline')}<div><strong>Event and student list</strong><p>${prepared ? `${esc(S.pack.event.name)} · ${S.pack.students.length} students<br>Downloaded ${fmt(S.pack.preparedAt)}` : 'The active event and student IDs save automatically while this phone is connected.'}</p></div></div><div id="offline-readiness" role="status">${offlineReadiness()}</div><div class="readiness">${icon('nfc')}<div><strong>NFC scanning</strong><p>Available on supported Android browsers. Your student list must include the scanned ID.</p></div></div><div class="readiness">${icon('qr')}<div><strong>QR camera</strong><p>${S.config.qrAvailable ? 'Available. Assets save automatically while connected.' : 'Not set up on the server yet.'}</p></div></div><div class="readiness">${icon('photo')}<div><strong>ID photo reader</strong><p>${S.config.ocrAvailable ? 'Available. Assets save automatically while connected.' : 'Not set up on the server yet.'}</p></div></div><div class="notice info"><strong>Before you leave</strong><p>Keep this account signed in. Event and student IDs update automatically while connected. Arrivals appear on other devices after they reach the server.</p></div></div></section><section class="card"><div class="card-header"><div><h2 class="section-title">${icon('offline')}Waiting to upload</h2><p>${S.queue.length} saved record${S.queue.length === 1 ? '' : 's'}</p></div>${btn('Upload saved records', 'sync', '', navigator.onLine && S.queue.length ? '' : 'disabled')}</div><div class="card-body">${queueList()}<p class="muted">If the event has ended, late records need an administrator’s approval.</p></div></section></div>`;
 }
 async function refresh(renderPage = true) {
   try {
@@ -351,6 +355,8 @@ async function refresh(renderPage = true) {
       data: S.data,
       config: S.config
     });
+    await saveOfflinePack().catch(e => { S.offlineError = e.message; });
+    updateConnectionUI();
     const eventChanged = previousEventId !== S.data.active?.event.id;
     if (S.page === 'scanner' && eventChanged) {
       await stopReaders();
@@ -384,7 +390,7 @@ function connectSocket() {
     connectSocket.timer = setTimeout(() => refresh(!$('#modal').open && !['scanner', 'students', 'attendance', 'team'].includes(S.page)).catch(() => {}), 250);
   });
   S.socket.on('connect', () => {
-    if (S.user) refresh(S.page === 'dashboard').then(updateConnectionUI).catch(() => {});
+    if (S.user) refresh(S.page === 'dashboard').then(() => syncQueue()).catch(() => {});
   });
   S.socket.on('disconnect', () => {
     S.online = false;
@@ -456,7 +462,7 @@ async function record(input) {
     if (input.method === 'nfc') student = studentList.find(s => s.nfcUid && s.nfcUid === String(input.credential || '').replace(/[:\s-]/g, '').toUpperCase());
     if (input.method === 'qr') student = studentList.find(s => s.qrToken === String(input.credential || '').replace(/^safetap:/, ''));
     if (!S.online) {
-      if (!S.pack || S.pack.userId !== S.user.id) throw new Error('Download the student list while connected before scanning offline.');
+      if (!S.pack || S.pack.userId !== S.user.id) throw new Error('Connect once to save this event and its student IDs before scanning offline.');
       if (input.method === 'qr') student = S.pack.students.find(s => s.qrToken === String(input.credential).replace(/^safetap:/, ''));
       if (!student?.active) throw new Error('ID not found in the downloaded student list. Update the list while connected.');
     }
@@ -478,6 +484,11 @@ async function record(input) {
         showResult(`${result.name} · ${result.status === 'duplicate' ? 'Already recorded · counted once' : result.status === 'review' ? 'Waiting for administrator approval' : 'Arrived safely · saved to server'}`);
         return;
       } catch (e) {
+        if (e.status === 401 || e.status === 403) {
+          S.csrf = null;
+          showResult('Saved on this phone. Reconnect or sign in again to upload.', 'pending');
+          return;
+        }
         if (!e.network) {
           scan.error = e.message;
           await persistQueue();
@@ -496,50 +507,105 @@ async function record(input) {
   }
 }
 async function syncQueue() {
-  if (syncQueue.running || !S.user) return;
+  if (syncQueue.running || !S.user || !S.queue.length) return;
   syncQueue.running = true;
   try {
-    const scans = S.queue.filter(q => q.ownerId === S.user.id && !q.error).slice(0, 100);
-    if (!scans.length) return;
-    if (!S.csrf) await refresh(false);
-    const {
-      results
-    } = await api('/sync', {
-      scans
-    });
-    for (const r of results) {
-      const q = S.queue.find(q => q.submissionId === r.submissionId);
-      if (r.status === 'rejected') {
-        if (q) q.error = r.error;
-      } else S.queue = S.queue.filter(q => q.submissionId !== r.submissionId);
+    // A cookie may have changed in another tab. Always use the current session.
+    const auth = await api('/me');
+    if (auth.user.id !== S.user.id) throw Object.assign(new Error('Sign in with the account that saved these records.'), {status: 401});
+    S.csrf = auth.csrf;
+    for (const q of S.queue) {
+      if (q.ownerId === S.user.id && (
+        /^Session verification failed\./.test(q.error || '') ||
+        q.error === 'Please refresh and sign in again. Your saved scans will stay on this phone.'
+      )) delete q.error;
     }
-    await persistQueue();
+    let accepted = 0, rejected = 0;
+    while (true) {
+      const scans = S.queue.filter(q => q.ownerId === S.user.id && !q.error).slice(0, 100);
+      if (!scans.length) break;
+      const {
+        results
+      } = await api('/sync', {
+        scans
+      });
+      for (const r of results) {
+        const q = S.queue.find(q => q.submissionId === r.submissionId);
+        if (r.status === 'rejected') {
+          if (q) q.error = r.error;
+        } else S.queue = S.queue.filter(q => q.submissionId !== r.submissionId);
+      }
+      await persistQueue();
+      accepted += results.filter(r => r.status !== 'rejected').length;
+      rejected += results.filter(r => r.status === 'rejected').length;
+      if (!results.length) break;
+    }
+    if (!accepted && !rejected) return;
     await refresh(false);
-    toast(`Sync complete: ${results.filter(r => r.status !== 'rejected').length} accepted or already recorded; ${results.filter(r => r.status === 'rejected').length} need attention.`);
-    if (S.page !== 'scanner') render();else {
+    toast(`Sync complete: ${accepted} accepted or already recorded; ${rejected} need attention.`);
+    if (S.page !== 'scanner') render();
+    else if ($('#device-queue')) $('#device-queue').innerHTML = queueList();
+  } catch (e) {
+    if (e.status === 401) {
+      S.csrf = null;
+      S.user = null;
       await stopReaders();
-      render();
+      login();
+      toast('Sign in again to upload. Saved scans are still on this phone.');
     }
+    throw e;
   } finally {
     syncQueue.running = false;
     updateConnectionUI();
   }
 }
-async function prepare() {
-  if (!S.data.active) throw new Error('Start an event first.');
-  const pack = await api('/offline');
-  if (!('serviceWorker' in navigator) || !window.isSecureContext) throw new Error('Offline preparation requires HTTPS (or localhost) and service-worker support.');
-  await Promise.race([navigator.serviceWorker.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('Offline shell is not ready. Reload on a secure connection and retry.')), 10000))]);
-  if (S.config.qrAvailable || S.config.ocrAvailable) {
-    const response = await fetch('/vendor/manifest.json');
-    if (!response.ok) throw new Error('Vendor manifest missing. Run npm run vendor on the server.');
-    const files = await response.json();
-    const cache = await caches.open('safetap-vendor-v1');
-    await cache.addAll(files);
+function offlineReadiness() {
+  if (S.offlineError) return `<p class="error-text">Offline setup needs attention: ${esc(S.offlineError)}</p>${btn('Retry offline setup', 'prepare', '', S.online && S.data.active ? '' : 'disabled')}`;
+  if (!S.pack || S.pack.userId !== S.user?.id || S.online && S.pack.event.id !== S.data.active?.event.id) return '<p>Event and student list save automatically while connected. Keep this page open until ready.</p>';
+  return `<p>Event and ${S.pack.students.length} student IDs saved automatically ${fmt(S.pack.preparedAt)}. NFC and student search are ready offline.</p><p class="muted">${S.offlineAssets ? 'Offline app, QR and photo assets saved.' : 'Offline app and camera assets are still downloading. Keep this page open while connected.'}</p>`;
+}
+async function saveOfflinePack() {
+  if (!S.user || !S.online) return;
+  if (!S.data.active) {
+    S.pack = null;
+    await localSet('pack', null);
+    S.offlineError = '';
+    return;
   }
+  const ownerId = S.user.id, eventId = S.data.active.event.id;
+  const pack = await api('/offline');
+  if (S.user?.id !== ownerId || S.data.active?.event.id !== eventId || pack.userId !== ownerId || pack.event.id !== eventId) return;
   await localSet('pack', pack);
   S.pack = pack;
-  toast('Event and student list downloaded. This phone is ready for offline scanning.');
+  S.offlineError = '';
+  cacheOfflineAssets().catch(e => { S.offlineError = e.message; updateConnectionUI(); });
+}
+async function cacheOfflineAssets() {
+  if (S.offlineAssets) return;
+  if (cacheOfflineAssets.running) return cacheOfflineAssets.running;
+  cacheOfflineAssets.running = (async () => {
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) throw new Error('Offline preparation requires HTTPS (or localhost) and service-worker support.');
+    await navigator.serviceWorker.register('/sw.js');
+    await Promise.race([navigator.serviceWorker.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('Offline shell is not ready. Reload on a secure connection and retry.')), 10000))]);
+    if (S.config.qrAvailable || S.config.ocrAvailable) {
+      const response = await fetch('/vendor/manifest.json');
+      if (!response.ok) throw new Error('Vendor manifest missing. Run npm run vendor on the server.');
+      const files = await response.json();
+      const cache = await caches.open('safetap-vendor-v1');
+      for (const file of files) if (!await cache.match(file)) await cache.add(file);
+    }
+    S.offlineAssets = true;
+    S.offlineError = '';
+    if (navigator.storage?.persist) await navigator.storage.persist().catch(() => {});
+    updateConnectionUI();
+  })();
+  try { await cacheOfflineAssets.running; } finally { cacheOfflineAssets.running = null; }
+}
+async function prepare() {
+  if (!S.data.active) throw new Error('Start an event first.');
+  await saveOfflinePack();
+  await cacheOfflineAssets();
+  toast('Event, student IDs and scanner assets saved on this phone.');
   render();
 }
 async function startQr() {
@@ -945,6 +1011,19 @@ window.addEventListener('online', async () => {
     toast(e.message);
   }
 });
+async function resumeConnection() {
+  if (!S.user || !navigator.onLine || resumeConnection.running) return;
+  resumeConnection.running = true;
+  try {
+    await refresh(S.page !== 'scanner' && !$('#modal').open);
+    await syncQueue();
+  } catch (e) { toast(e.message); }
+  finally { resumeConnection.running = false; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') resumeConnection();
+});
+window.addEventListener('pageshow', () => resumeConnection());
 async function boot() {
   try {
     S.queue = (await localGet('queue')) || [];
@@ -965,6 +1044,7 @@ async function boot() {
       }
       await refresh();
       connectSocket();
+      if (S.queue.length) syncQueue().catch(e => toast(e.message));
     } catch (e) {
       if (e.network && saved) {
         Object.assign(S, {
@@ -985,7 +1065,7 @@ setInterval(async () => {
   if (!S.user || !navigator.onLine || syncQueue.running) return;
   try {
     await refresh(S.page === 'dashboard' && !$('#modal').open && document.activeElement?.tagName !== 'INPUT');
-    if (S.queue.some(q => !q.error)) await syncQueue();
+    if (S.queue.length) await syncQueue();
   } catch {}
 }, 30000);
 boot();

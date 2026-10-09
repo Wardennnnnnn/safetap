@@ -21,7 +21,7 @@ Run `npm test` and `npm run check` from `main`. API tests exercise Express in pr
 ## Android Chrome and iPhone Safari
 
 - Test at desktop width and 360 and 390 px mobile widths. All navigation, dialogs, forms, and horizontal tables remain usable; no page-wide overflow.
-- Prepare offline while connected; check device storage, camera permission denial, and successful camera QR recognition of a generated QR.
+- While connected, open an active event without tapping Prepare. Wait for automatic event/ID and asset readiness, then test NFC/QR after disabling the network and reloading. Check device storage errors, failed asset downloads with retry, camera permission denial, and successful camera QR recognition of a generated QR.
 - On the supported Android phone, open **Scan IDs → NFC**, start the reader, grant permission, and tap a registered ID. Confirm the name, server record, and single headcount. Repeat the tap; it must not add another arrival. Test permission denial, NFC switched off, unregistered IDs, and unreadable cards.
 - Stop the reader, change methods, navigate away, and change events. Old reader callbacks must not submit arrivals. Unsupported browsers must keep the NFC option visible and offer a clear fallback message.
 - Confirm QR, OCR, and manual workflows on supported phone browsers. Test phone More navigation as both administrator and representative.
