@@ -190,6 +190,21 @@ test('all client pages render, escape student HTML, and preserve CAFAD scope', a
   assert(e.node('#app').innerHTML.includes('Not included in SafeTap'));
   assert(e.node('#app').innerHTML.includes('CAFAD'));
 });
+test('floor plan shows open class attendance before an event and preserves the event snapshot', async () => {
+  const e = await ready();
+  e.context.savedEvent = structuredClone(e.context.testState.active);
+  e.run('S.floor=3;S.room="F3-3";S.data.active=null');
+  assert.match(e.run('floorMap()'), /1 present/);
+  assert.match(e.run('roomDetail()'), /Present in class/);
+  assert.doesNotMatch(e.run('roomDetail()'), /Still missing|Not on the expected list/);
+  e.run('S.data.attendance.push({...S.data.attendance[0]})');
+  assert.equal(e.run('roomPeople("F3-3").length'), 1, 'attendance is deduplicated');
+  e.run('S.data.classes[0].status="closed"');
+  assert.equal(e.run('roomPeople("F3-3").length'), 0);
+  e.run('S.data.active=savedEvent');
+  assert.match(e.run('floorMap()'), /0 \/ 1 safe/);
+  assert.match(e.run('roomDetail()'), /Still missing/);
+});
 test('offline record persists, then sync removes it and counts once', async () => {
   const e = await ready();
   e.context.studentId = e.db.students[0].id;

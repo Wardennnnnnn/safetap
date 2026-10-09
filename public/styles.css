@@ -1,4 +1,4 @@
-@import url('/fonts.css?v=5-ocr-config');
+@import url('/fonts.css?v=6-floor-attendance');
 
 :root {
   font-family: 'SafeTap Sans', 'Segoe UI', sans-serif;
@@ -128,6 +128,8 @@ strong, b { font-weight: 700; }
 .room-shape { fill: white; stroke: #b7c5d6; stroke-width: 1.5; }
 .room-group:hover .room-shape, .room-group:focus .room-shape { stroke: var(--blue); stroke-width: 2.5; }
 .room-group.green .room-shape { fill: #e6f3eb; stroke: #71ad92; }
+.room-group.blue .room-shape { fill: #e5effa; stroke: #729ec8; }
+.legend .dot.blue { background: var(--blue); }
 .room-group.amber .room-shape { fill: #fff1d8; stroke: #c8a05d; }
 .room-group.gray .room-shape { fill: #e6ebf1; stroke: #bfccd9; }
 .room-group.selected .room-shape { stroke: var(--blue); stroke-width: 3; }
@@ -315,6 +317,7 @@ dialog > p { font-size: .8125rem; color: var(--muted); margin-bottom: 24px; }
 :root[data-theme=dark] :is(.badge.red, .scan-result.error) { color: #ffb7c2; background: #422b34; border-color: #895261; }
 :root[data-theme=dark] .room-shape { fill: #23364b; stroke: #6d839b; }
 :root[data-theme=dark] .room-group.green .room-shape { fill: #204a3c; stroke: #74be9b; }
+:root[data-theme=dark] .room-group.blue .room-shape { fill: #263e57; stroke: #8ab7df; }
 :root[data-theme=dark] .room-group.amber .room-shape { fill: #51412b; stroke: #d5b375; }
 :root[data-theme=dark] .room-group.gray .room-shape { fill: #303e50; stroke: #8190a4; }
 :root[data-theme=dark] :is(.room-name, .room-count, .corridor-label) { fill: #e1eaf6; }
