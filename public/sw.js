@@ -1,7 +1,7 @@
 'use strict';
 
-const VERSION = 'safetap-shell-v7-auto-offline';
-const SHELL = ['/', '/index.html', '/theme.js', '/theme.js?v=7-auto-offline', '/app.js', '/app.js?v=7-auto-offline', '/styles.css', '/styles.css?v=7-auto-offline', '/fonts.css', '/fonts.css?v=7-auto-offline', '/assets/fonts/OpenSans-Regular.ttf', '/assets/fonts/OpenSans-Semibold.ttf', '/assets/fonts/OpenSans-Bold.ttf', '/manifest.webmanifest', '/assets/icon.svg', '/assets/cics-floorplan.png', '/socket.io/socket.io.js'];
+const VERSION = 'safetap-shell-v8-attendance-block';
+const SHELL = ['/', '/index.html', '/theme.js', '/theme.js?v=8-attendance-block', '/app.js', '/app.js?v=8-attendance-block', '/styles.css', '/styles.css?v=8-attendance-block', '/fonts.css', '/fonts.css?v=8-attendance-block', '/assets/fonts/OpenSans-Regular.ttf', '/assets/fonts/OpenSans-Semibold.ttf', '/assets/fonts/OpenSans-Bold.ttf', '/manifest.webmanifest', '/assets/icon.svg', '/assets/cics-floorplan.png', '/socket.io/socket.io.js'];
 self.addEventListener('install', event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('safetap-shell-') && k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', event => {

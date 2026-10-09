@@ -210,6 +210,26 @@ test('floor plan shows open class attendance before an event and preserves the e
   assert.match(e.run('floorMap()'), /0 \/ 1 safe/);
   assert.match(e.run('roomDetail()'), /Still missing/);
 });
+test('attendance automatically selects a single assigned block and restricts multiple-block choices', async () => {
+  const e = await ready();
+  e.context.assignedId = e.db.blocks[0].id;
+  e.run('S.user={...S.user,role:"rep",blockIds:[assignedId]}');
+  await e.run('action({dataset:{action:"open-class"}})');
+  let html = e.node('#modal').innerHTML;
+  assert.match(html, /type="hidden" name="blockId"/);
+  assert(html.includes(`value="${e.db.blocks[0].id}"`));
+  assert.doesNotMatch(html, /<select name="blockId"/);
+  assert.match(html, /<select name="roomId"/);
+  e.run('S.user.blockIds=S.data.blocks.map(b=>b.id)');
+  await e.run('action({dataset:{action:"open-class"}})');
+  assert.match(e.node('#modal').innerHTML, /<select name="blockId"/);
+  e.run('S.user.role="admin";S.user.blockIds=[]');
+  await e.run('action({dataset:{action:"open-class"}})');
+  assert.match(e.node('#modal').innerHTML, /<select name="blockId"/);
+  e.run('S.user.role="rep";S.user.blockIds=[]');
+  await e.run('action({dataset:{action:"open-class"}})');
+  assert.match(e.node('#toast').textContent, /No blocks are assigned/);
+});
 test('offline record persists, then sync removes it and counts once', async () => {
   const e = await ready();
   e.context.studentId = e.db.students[0].id;
