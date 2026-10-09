@@ -1,0 +1,15 @@
+[Unit]
+Description=SafeTap campus accountability server
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Documents/Safetap/main
+ExecStart=/usr/bin/node --env-file=.env server.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+
+[Install]
+WantedBy=default.target

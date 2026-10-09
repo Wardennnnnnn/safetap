@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.sql.gz
+*.sql
+!migrations/*.sql
+*.dump
+*.backup
+.runtime/
+public/vendor/
+coverage/

@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: safetap
+    runtime: node
+    plan: free
+    region: singapore
+    autoDeployTrigger: off
+    buildCommand: npm ci && npm run vendor
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.23.1
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: '1'
+      - key: COOKIE_SECURE
+        value: '1'
+      - key: DB_SSL
+        value: '1'
+      - key: DB_SSL_CA_FILE
+        value: /etc/secrets/aiven-ca.pem
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false

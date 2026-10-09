@@ -1,0 +1,36 @@
+{
+  "name": "safetap-main",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CICS emergency attendance and evacuation accountability",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --env-file-if-exists=.env --watch server.js",
+    "demo": "node server.js --demo",
+    "db:init": "node --env-file-if-exists=.env scripts/init-db.js",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate-db.js",
+    "db:backup": "node scripts/backup-db.js",
+    "migration": "node scripts/migrate-directory.js",
+    "deploy:prepare": "node scripts/prepare-repo.js",
+    "test:mysql": "node test/mysql.integration.test.js",
+    "vendor": "node scripts/vendor.js",
+    "test": "node --test test/*.test.js",
+    "check": "node scripts/check.js",
+    "test:domain": "node test/domain.test.js",
+    "test:api": "node test/api.test.js",
+    "test:frontend": "node test/frontend.test.js"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "socket.io": "4.8.1",
+    "mysql2": "3.15.3",
+    "html5-qrcode": "2.3.8",
+    "qrcode": "1.5.4",
+    "tesseract.js": "6.0.1",
+    "tesseract.js-core": "6.0.0",
+    "@tesseract.js-data/eng": "1.0.0"
+  }
+}

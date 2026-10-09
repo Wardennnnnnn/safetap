@@ -1,0 +1,22 @@
+/* Locally hosted Open Sans. Source Sans 3 could not be downloaded in this environment. */
+@font-face {
+  font-family: 'SafeTap Sans';
+  src: url('/assets/fonts/OpenSans-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SafeTap Sans';
+  src: url('/assets/fonts/OpenSans-Semibold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SafeTap Sans';
+  src: url('/assets/fonts/OpenSans-Bold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
