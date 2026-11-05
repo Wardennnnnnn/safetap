@@ -40,4 +40,4 @@ The integration test creates a `safetap_test_…` database, verifies migration, 
 9. Verify camera/NFC permission denial, unsupported-browser feedback and storage-write errors.
 10. Test desktop and 360–390 px phone layouts, keyboard navigation, light/dark mode, reports and printing.
 
-Test real NFC cards on the intended Android devices. Check OCR with clear, blurred and ambiguous IDs; choosing a photo must never confirm an arrival automatically.
+Test real NFC cards and camera QR scanning on the intended Android devices.

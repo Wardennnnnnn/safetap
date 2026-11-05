@@ -9,6 +9,13 @@ const vm = require('node:vm');
 test('installed shell contains all app dependencies and reloads offline without caching API responses', async () => {
   const listeners = new Map();
   const cached = new Map();
+  const vendor = new Map([
+    ['/vendor/html5-qrcode.min.js', 'QR library'],
+    ['/vendor/tesseract.min.js', 'OCR library'],
+    ['/vendor/worker.min.js', 'OCR worker'],
+    ['/vendor/tesseract-core.wasm', 'OCR core'],
+    ['/vendor/eng.traineddata.gz', 'OCR language data']
+  ]);
   const network = [];
   let online = true;
   const context = vm.createContext({
@@ -20,7 +27,10 @@ test('installed shell contains all app dependencies and reloads offline without 
       clients: {claim: async () => {}}
     },
     caches: {
-      open: async () => ({
+      open: async name => name === 'safetap-vendor-v1' ? {
+        keys: async () => [...vendor.keys()].map(path => ({url: 'https://safetap.test' + path})),
+        delete: async request => vendor.delete(new URL(request.url).pathname)
+      } : ({
         addAll: async files => files.forEach(file => cached.set(file, {url: file})),
         put: async (request, response) => cached.set(request.url.replace('https://safetap.test', ''), response)
       }),
@@ -38,6 +48,10 @@ test('installed shell contains all app dependencies and reloads offline without 
   let installing;
   listeners.get('install')({waitUntil(promise) {installing = promise;}});
   await installing;
+  let activating;
+  listeners.get('activate')({waitUntil(promise) {activating = promise;}});
+  await activating;
+  assert.deepEqual([...vendor.keys()], ['/vendor/html5-qrcode.min.js'], 'upgrades remove OCR downloads and keep offline QR available');
   const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
   for (const [, source] of html.matchAll(/(?:src|href)="(\/[^"#]+)"/g)) {
     assert(cached.has(source), `offline shell missing ${source}`);
@@ -51,7 +65,7 @@ test('installed shell contains all app dependencies and reloads offline without 
     return response === undefined ? undefined : await response;
   };
   assert.equal((await dispatch('/', 'navigate')).url, '/index.html');
-  assert.equal((await dispatch('/js/offline-controller.js?v=14-role-boundaries')).url, '/js/offline-controller.js?v=14-role-boundaries');
+  assert.equal((await dispatch('/js/offline-controller.js?v=15-qr-nfc-search')).url, '/js/offline-controller.js?v=15-qr-nfc-search');
   assert.equal((await dispatch('/socket.io/socket.io.min.js')).url, '/socket.io/socket.io.min.js');
   assert.equal(await dispatch('/api/offline'), undefined);
   assert.equal(await dispatch('/api/session'), undefined);
@@ -59,6 +73,6 @@ test('installed shell contains all app dependencies and reloads offline without 
   assert.equal(await dispatch('/socket.io/?transport=polling'), undefined);
   const before = network.length;
   online = true;
-  await dispatch('/app.js?v=14-role-boundaries');
+  await dispatch('/app.js?v=15-qr-nfc-search');
   assert.equal(network.length, before, 'unchanged versioned code does not download on reopening');
 });

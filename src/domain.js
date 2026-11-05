@@ -295,6 +295,7 @@ function addParticipant(db, event, s, roomId, expected) {
 function resolveStudent(db, input) {
   let s;
   if (input.method === 'nfc') s = db.students.find(s => s.nfcUid && s.nfcUid === uid(input.credential));else if (input.method === 'qr') s = db.students.find(s => s.qrToken === String(input.credential || '').replace(/^safetap:/, ''));else {
+    // Older phones may still upload confirmed ID-photo records from their queue.
     need(['manual', 'ocr'].includes(input.method), 'Unknown scan method.');
     need(input.confirmed === true, 'Confirm the student before recording.');
     s = db.students.find(s => s.id === input.studentId);

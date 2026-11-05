@@ -23,7 +23,7 @@ function environment() {
   f.syncBatches = [];
   f.requests = [];
   f.user = f.db.users[0];
-  f.config = {demo: true, qrAvailable: false, ocrAvailable: false};
+  f.config = {demo: true, qrAvailable: false};
   const c = D.openClass(f.db, f.user, {
     blockId: f.db.blocks[0].id,
     roomId: 'F3-3'
@@ -368,10 +368,10 @@ test('automatic preparation caches scanner assets once without interrupting NFC'
   e.context.navigator.serviceWorker = {register: async () => {}, ready: Promise.resolve({})};
   e.context.navigator.storage = {persist: async () => true};
   e.context.caches = {open: async () => ({match: async key => cached.has(key), add: async key => cached.add(key)})};
-  e.context.fetch = async () => ({ok: true, json: async () => ['/vendor/qr.js', '/vendor/ocr.wasm']});
-  e.run('state.config={qrAvailable:true,ocrAvailable:true};state.nfcController=new AbortController();state.nfcState="reading"');
+  e.context.fetch = async () => ({ok: true, json: async () => ['/vendor/html5-qrcode.min.js']});
+  e.run('state.config={qrAvailable:true};state.nfcController=new AbortController();state.nfcState="reading"');
   await e.run('cacheOfflineAssets()');
-  assert.deepEqual([...cached], ['/vendor/qr.js', '/vendor/ocr.wasm']);
+  assert.deepEqual([...cached], ['/vendor/html5-qrcode.min.js']);
   assert.equal(e.run('state.offlineAssets'), true);
   assert.equal(e.run('state.nfcController.signal.aborted'), false);
   assert.match(e.run('offlineReadiness()'), /12 student IDs saved/);
@@ -407,27 +407,6 @@ test('closing an event retains the student directory and pending records for rev
   assert.equal(e.idb.rows.get('queue')[0].eventId, e.event.id);
 });
 
-test('ID photo offers distinct file and camera inputs without recording an arrival', async () => {
-  const e = await ready();
-  e.run('state.config.ocrAvailable=true;state.page="scanner";state.method="ocr";render()');
-  const html = e.node('#app').innerHTML;
-  assert(html.includes('Choose file'));
-  assert(html.includes('Take photo'));
-  assert(!html.match(/<input id="ocr-file"[^>]*>/)[0].includes('capture='));
-  assert(html.match(/<input id="ocr-camera"[^>]*>/)[0].includes('capture="environment"'));
-  let chosen = 0, taken = 0;
-  e.node('#ocr-file').click = () => chosen++;
-  e.node('#ocr-camera').click = () => taken++;
-  await e.run('action({dataset:{action:"choose-photo"}})');
-  await e.run('action({dataset:{action:"take-photo"}})');
-  assert.equal(chosen, 1);
-  assert.equal(taken, 1);
-  assert.equal(e.db.checkins.length, 0);
-  e.run('state.config.ocrAvailable=false');
-  await e.run('action({dataset:{action:"take-photo"}})');
-  assert.equal(taken, 1);
-});
-
 test('changing appearance leaves an active NFC reader and page intact', async () => {
   const e = await ready();
   let toggleCount = 0;
@@ -439,16 +418,16 @@ test('changing appearance leaves an active NFC reader and page intact', async ()
   assert.equal(e.run('state.page'), 'scanner');
 });
 
-test('reconnect refresh replaces stale OCR availability and enables the photo controls', async () => {
+test('reconnect refresh replaces stale QR availability and enables the camera', async () => {
   const e = await ready();
-  e.run('state.config.ocrAvailable=false;state.page="scanner";state.method="ocr";render()');
-  assert(e.node('#app').innerHTML.includes('ID photo unavailable'));
-  e.config.ocrAvailable = true;
+  e.run('state.config.qrAvailable=false;state.page="scanner";state.method="qr";render()');
+  assert(e.node('#app').innerHTML.includes('QR unavailable'));
+  e.config.qrAvailable = true;
   e.setNetwork(true);
   await e.run('refresh(false)');
-  assert(!e.node('#app').innerHTML.includes('ID photo unavailable'));
-  assert(!e.node('#app').innerHTML.match(/<input id="ocr-file"[^>]*>/)[0].includes('disabled'));
-  assert.equal(e.idb.rows.get('session').config.ocrAvailable, true);
+  assert(!e.node('#app').innerHTML.includes('QR unavailable'));
+  assert(!e.node('#app').innerHTML.match(/<button[^>]*data-action="qr"[^>]*>/)[0].includes('disabled'));
+  assert.equal(e.idb.rows.get('session').config.qrAvailable, true);
 });
 
 test('online scanning uses the downloaded NFC/QR directory and makes no per-scan requests', async () => {

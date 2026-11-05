@@ -143,7 +143,7 @@ test('cross-block scanning is allowed, repeat submissions/scans count once', () 
   assert.equal(f.db.checkins.length, 1);
   assert.throws(() => D.checkin(f.db, f.rep, input), /conflict/);
 });
-test('QR NFC OCR manual resolve the same student', () => {
+test('QR, NFC, manual and legacy queued OCR records resolve the same student', () => {
   const f = eventFixture();
   f.student.nfcUid = '04A1B2C3D4E5F6';
   for (const input of [{

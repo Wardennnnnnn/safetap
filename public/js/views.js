@@ -228,7 +228,7 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
   }
   function scanner() {
     const event = currentEvent();
-    const methods = [['nfc', 'nfc', 'NFC'], ['qr', 'qr', 'QR'], ['manual', 'search', 'Search'], ['ocr', 'photo', 'ID photo']];
+    const methods = [['nfc', 'nfc', 'NFC'], ['qr', 'qr', 'QR'], ['manual', 'search', 'Search']];
     const active = state.data?.active?.event.id === event?.id ? state.data.active : null;
     let reader;
     if (state.method === 'nfc') {
@@ -238,12 +238,8 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
         <div class="actions scan-actions">${btn('Start NFC scan', 'nfc', 'primary', `${!event ? 'disabled' : ''} ${reading ? 'hidden' : ''}`)}${btn('Stop reader', 'stop-reader', 'primary', `id="stop-reader" ${state.nfcState === 'idle' ? 'hidden disabled' : ''}`)}</div></div>`;
     } else if (state.method === 'qr') {
       reader = `<div id="camera"></div><div class="scan-target"><div class="scan-icon">${icon('qr')}</div><h2>Scan student QR</h2>${btn('Open camera', 'qr', 'primary', !state.config.qrAvailable || !event ? 'disabled' : '')}</div>${!state.config.qrAvailable ? '<div class="notice">QR unavailable. Use NFC or search.</div>' : ''}`;
-    } else if (state.method === 'manual') {
-      reader = `<label class="field">Find student<input id="scan-search" type="search" placeholder="Name or student number" autocomplete="off"></label><div id="candidates">${empty('Enter at least 2 characters', '')}</div>`;
     } else {
-      reader = `<div class="scan-target"><div class="scan-icon">${icon('photo')}</div><h2>Read student ID</h2><div class="actions photo-actions">${btn('Choose file', 'choose-photo', '', !state.config.ocrAvailable || !event ? 'disabled' : '')}${btn('Take photo', 'take-photo', 'primary', !state.config.ocrAvailable || !event ? 'disabled' : '')}</div>
-        <input id="ocr-file" type="file" accept="image/*" hidden ${!state.config.ocrAvailable || !event ? 'disabled' : ''}><input id="ocr-camera" type="file" accept="image/*" capture="environment" hidden ${!state.config.ocrAvailable || !event ? 'disabled' : ''}></div>
-        <div id="ocr-status" class="muted" role="status"></div><div id="candidates"></div>${!state.config.ocrAvailable ? '<div class="notice">ID photo unavailable. Use NFC or search.</div>' : ''}`;
+      reader = `<label class="field">Find student<input id="scan-search" type="search" placeholder="Name or student number" autocomplete="off"></label><div id="candidates">${empty('Enter at least 2 characters', '')}</div>`;
     }
     return heading('', 'Scan IDs', '') + `<div class="scanner-layout">
       <section class="card scanner-card"><div class="card-header"><div><h2>${event ? esc(event.name) : 'No active event'}</h2>${event ? `<p>${esc(event.area)}</p>` : '<p>Connect to download an active event.</p>'}</div>${badge(event ? state.online ? 'Active' : 'Offline' : 'Not ready', event ? state.online ? 'green' : 'amber' : '')}</div>
@@ -412,7 +408,7 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
       <section class="card"><div class="card-header"><h2>Device readiness</h2>${badge(pack ? 'Downloaded' : 'Not downloaded', pack ? 'green' : 'amber')}</div>
         <div class="card-body"><div id="offline-readiness" role="status">${offlineReadiness()}</div>
           ${pack ? `<p class="download-time">Downloaded ${fmt(pack.preparedAt)}</p>` : ''}
-          <dl class="offline-facts"><div><dt>QR camera</dt><dd>${state.config.qrAvailable ? 'Available' : 'Unavailable'}</dd></div><div><dt>ID photo</dt><dd>${state.config.ocrAvailable ? 'Available' : 'Unavailable'}</dd></div></dl>
+          <dl class="offline-facts"><div><dt>QR camera</dt><dd>${state.config.qrAvailable ? 'Available' : 'Unavailable'}</dd></div></dl>
         </div>
       </section>
       <section class="card"><div class="card-header"><h2>Pending uploads</h2><span id="queue-count">${badge(`${state.queue.length} pending`, state.queue.length ? 'amber' : '')}</span></div>

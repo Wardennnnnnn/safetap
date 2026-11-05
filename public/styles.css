@@ -191,7 +191,7 @@ input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--blue); fle
 .empty { padding: 26px 14px; text-align: center; color: var(--muted); font-size: .8125rem; line-height: 1.7; }
 .empty strong { display: block; color: #344b64; font-size: .9375rem; margin-bottom: 6px; }
 .scanner-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
-.scanner-methods { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+.scanner-methods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
 .scanner-methods button { padding: 10px 6px; white-space: nowrap; font-size: .8125rem; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; }
 .scanner-methods button.active { color: var(--blue); background: transparent; border-bottom-color: var(--blue); }
 .scan-target { padding: 24px 20px; text-align: center; background: transparent; border-radius: 10px; }
@@ -277,8 +277,6 @@ dialog > p { font-size: .8125rem; color: var(--muted); margin-bottom: 24px; }
 .login-brand-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .login-brand-row .theme-toggle { background: transparent; border-color: #718ca8; color: #f5f8fc; }
 .login-brand-row .theme-toggle:hover { background: #264864; }
-.photo-actions { justify-content: center; }
-.photo-actions .btn { min-width: 140px; }
 .btn .icon { width: 18px; height: 18px; }
 .section-title { display: flex; align-items: center; gap: 10px; }
 .section-title .icon { width: 19px; height: 19px; color: var(--muted); }
@@ -392,7 +390,6 @@ dialog > p { font-size: .8125rem; color: var(--muted); margin-bottom: 24px; }
   .scan-actions { flex-direction: row; }
   .scan-actions .btn { width: 100%; }
   .scan-target .primary { width: 100%; }
-  .photo-actions .btn { width: 100%; }
   .form-grid { grid-template-columns: minmax(0, 1fr); }
   input:not([type=checkbox]), select, textarea { font-size: 1rem; }
   .form-grid .full { grid-column: auto; }

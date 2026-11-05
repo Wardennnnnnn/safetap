@@ -50,8 +50,7 @@ function createApplication(store, {
   app.get('/api/config', (req, res) => {
     res.set('Cache-Control', 'no-store').json({
       demo,
-      qrAvailable: fs.existsSync(path.join(root, 'public/vendor/html5-qrcode.min.js')),
-      ocrAvailable: fs.existsSync(path.join(root, 'public/vendor/eng.traineddata.gz'))
+      qrAvailable: fs.existsSync(path.join(root, 'public/vendor/html5-qrcode.min.js'))
     });
   });
   app.get('/api/version', (req, res) => {

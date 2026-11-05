@@ -1,6 +1,6 @@
 # SafeTap
 
-SafeTap is a classroom attendance and evacuation accountability system for CICS IT and CS students. Administrators manage students, blocks, representatives and evacuation events. Class representatives record attendance and confirm arrivals using NFC, QR codes, student search or ID-photo matching.
+SafeTap is a classroom attendance and evacuation accountability system for CICS IT and CS students. Administrators manage students, blocks, representatives and evacuation events. Class representatives record attendance and confirm arrivals using NFC, QR codes or student search.
 
 Built with vanilla JavaScript, Node.js, Express, Socket.IO and MySQL.
 
@@ -62,7 +62,7 @@ NFC and QR matching use the downloaded list without a request per scan. Each arr
 
 Use the same account and website address. Browser storage can be cleared or evicted, so upload records promptly and avoid clearing site data while records are waiting.
 
-NFC requires a browser exposing Web NFC and a readable card serial number that matches the student's registration. QR and ID-photo scanning require the assets prepared by `npm run vendor`. ID-photo matches always require human confirmation.
+NFC requires a browser exposing Web NFC and a readable card serial number that matches the student's registration. QR scanning requires the assets prepared by `npm run vendor`.
 
 ## Student CSV format
 

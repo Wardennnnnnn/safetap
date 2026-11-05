@@ -2,8 +2,8 @@
 
 // Hardware and vendor libraries stay here; scanned arrivals go through the
 // offline controller, exactly like manual confirmation.
-globalThis.SafeTapScanners = {create({state, currentEvent, students, record, ui}) {
-  const {$, icon, showResult, candidates} = ui;
+globalThis.SafeTapScanners = {create({state, currentEvent, record, ui}) {
+  const {$, icon, showResult} = ui;
   const {loadScript} = SafeTapAssets;
   async function stopReaders() {
     state.nfcController?.abort();
@@ -92,31 +92,5 @@ globalThis.SafeTapScanners = {create({state, currentEvent, students, record, ui}
       showResult(e.name === 'NotAllowedError' ? 'NFC permission was denied. Allow NFC for this site, then try again.' : 'The NFC reader could not start. Check that NFC is switched on and try again.', 'error');
     }
   }
-  async function ocr(file) {
-    if (!file) return;
-    if (file.size > 12 * 1024 * 1024) throw new Error('Choose an image smaller than 12 MB.');
-    await loadScript('/vendor/tesseract.min.js');
-    $('#ocr-status').textContent = 'Reading the ID on this device…';
-    if (!state.worker) state.worker = await Tesseract.createWorker('eng', 1, {
-      workerPath: '/vendor/worker.min.js',
-      corePath: '/vendor',
-      langPath: '/vendor',
-      logger: m => {
-        if ($('#ocr-status')) $('#ocr-status').textContent = `${m.status} ${Math.round((m.progress || 0) * 100)}%`;
-      }
-    });
-    const {
-      data: {
-        text
-      }
-    } = await state.worker.recognize(file);
-    const normalized = text.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const roster = students();
-    const numberMatches = roster.filter(s => normalized.includes(s.studentNumber.toLowerCase().replace(/[^a-z0-9]/g, '')));
-    let rows = numberMatches;
-    if (!rows.length) rows = roster.filter(s => s.name.toLowerCase().split(/\s+/).filter(w => w.length > 2).filter(w => text.toLowerCase().includes(w)).length >= 2);
-    if ($('#ocr-status')) $('#ocr-status').textContent = 'Select a match to confirm arrival.';
-    candidates(rows.slice(0, 12), 'ocr');
-  }
-  return {stopReaders, startQr, startNfc, updateNfcUI, ocr};
+  return {stopReaders, startQr, startNfc, updateNfcUI};
 }};

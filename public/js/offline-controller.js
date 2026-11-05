@@ -175,7 +175,7 @@ globalThis.SafeTapOffline = {create({state, device, directory, api, ui}) {
       if (!('serviceWorker' in navigator) || !window.isSecureContext) throw new Error('Offline preparation requires HTTPS (or localhost) and service-worker support.');
       await navigator.serviceWorker.register('/sw.js');
       await Promise.race([navigator.serviceWorker.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('Offline shell is not ready. Reload on a secure connection and retry.')), 10000))]);
-      if (state.config.qrAvailable || state.config.ocrAvailable) {
+      if (state.config.qrAvailable) {
         const response = await fetch('/vendor/manifest.json');
         if (!response.ok) throw new Error('Vendor manifest missing. Run npm run vendor on the server.');
         const files = await response.json();

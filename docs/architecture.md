@@ -31,7 +31,7 @@ When adding a rule, start in the domain layer. Routes should validate transport-
 | `public/js/device-store.js` | IndexedDB reads and transactional updates |
 | `public/js/student-directory.js` | NFC/QR/ID indexes and local student search |
 | `public/js/offline-controller.js` | Durable capture, duplicate checks, roster download and batch upload |
-| `public/js/scanners.js` | NFC reader, camera QR and OCR lifecycle |
+| `public/js/scanners.js` | NFC reader and camera QR lifecycle |
 | `public/js/assets.js` | Shared script loader with concurrent-load deduplication |
 | `public/sw.js` | Offline app shell and static scanner assets |
 
@@ -43,7 +43,7 @@ If you add a browser script, also add it to `index.html`, the service worker she
 
 1. While online, SafeTap downloads every active student in the authorized CICS directory, including NFC IDs and QR tokens. It saves the directory in IndexedDB even if there is no evacuation yet. `/api/state` supplies a content version; unchanged directory data is omitted from later state refreshes.
 2. When an event starts, its ID and details are saved on the phone. An offline phone cannot discover a new server event.
-3. NFC/QR lookup uses in-memory maps built from the saved directory. Search and OCR candidate matching also use local students. No lookup request is sent per scan.
+3. NFC/QR lookup uses in-memory maps built from the saved directory. Search also uses local students. No lookup request is sent per scan.
 4. A recognized arrival is written to IndexedDB first. Only after the transaction commits does the interface say it was saved on the phone. Repeated pending IDs are suppressed locally.
 5. A five-second collection window uploads queued records in batches of up to 100. Manual upload, reconnection, returning to the app and periodic retries also trigger sync. The scan reader does not wait for this network operation.
 6. The server authenticates the operator, validates each credential and event, and returns confirmed/duplicate/review/rejected outcomes. Server transactions preserve one headcount per student/event. Closed-event arrivals need administrator review.

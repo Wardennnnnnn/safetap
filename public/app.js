@@ -35,7 +35,6 @@ const state = {
   report: null,
   socket: null,
   scanner: null,
-  worker: null,
   search: '',
   filterBlock: '',
   filterStatus: '',
@@ -54,7 +53,6 @@ const ICONS = {
   history: '<path d="M5 3h14v18H5zM8 7h8m-8 5h8m-8 5h5"/>',
   nfc: '<path d="M9 7a7 7 0 0 1 0 10m4-14a12 12 0 0 1 0 18m-8-11a3 3 0 0 1 0 4"/>',
   qr: '<path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h3v3h-3zm6 0h1v7h-7v-1m3-3v4"/>',
-  photo: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="2"/><path d="m3 17 6-4 4 3 4-4 4 4"/>',
   search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/>',
   more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
   logout: '<path d="M9 4H4v16h5m5-13 5 5-5 5m-6-5h11"/>',
@@ -64,7 +62,6 @@ const ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
   moon: '<path d="M20.5 14A9 9 0 0 1 10 3.5a9 9 0 1 0 10.5 10.5Z"/>',
   camera: '<path d="M3 7h4l2-3h6l2 3h4v14H3z"/><circle cx="12" cy="13" r="4"/>',
-  folder: '<path d="M3 7V4h6l2 3h10v13H3z"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   edit: '<path d="m15 4 5 5M4 20l5-1L21 7l-5-5L4 14z"/>',
   refresh: '<path d="M20 7v5h-5M4 17v-5h5M5 7a8 8 0 0 1 13-2l2 3M4 16l2 3a8 8 0 0 0 13-2"/>',
@@ -132,11 +129,10 @@ const localSet = SafeTapDevice.set;
 const scannerController = SafeTapScanners.create({
   state: state,
   currentEvent: () => offlineController.event(),
-  students: () => offlineController.students(),
   record: input => record(input),
-  ui: {$, icon, showResult, candidates: (...args) => candidates(...args)}
+  ui: {$, icon, showResult}
 });
-const {stopReaders, startQr, startNfc, updateNfcUI, ocr} = scannerController;
+const {stopReaders, startQr, startNfc, updateNfcUI} = scannerController;
 const offlineController = SafeTapOffline.create({
   state: state, device: SafeTapDevice, directory: SafeTapDirectory, api,
   ui: {toast, showResult, updateConnectionUI, refresh, render: () => render(), stopReaders, login: () => login(),
@@ -189,8 +185,7 @@ const ACTION_ICONS = {
   'add-block': 'plus', 'add-student': 'plus', 'add-rep': 'plus', 'edit-student': 'edit', 'edit-rep': 'edit',
   'move-class': 'building', import: 'download', report: 'history', print: 'print', baseline: 'edit',
   prepare: 'download', sync: 'offline', reference: 'eye', 'rotate-qr': 'refresh', 'show-qr': 'qr',
-  'discard-item': 'trash', 'retry-item': 'refresh', 'stop-reader': 'stop', nfc: 'nfc', qr: 'camera',
-  'choose-photo': 'folder', 'take-photo': 'camera'
+  'discard-item': 'trash', 'retry-item': 'refresh', 'stop-reader': 'stop', nfc: 'nfc', qr: 'camera'
 };
 const btn = (label, action, cls = '', attrs = '') => {
   const symbol = ACTION_ICONS[action];
@@ -269,7 +264,6 @@ async function refresh(renderPage = true) {
       render();
       toast('Evacuation event changed. Review the event before scanning.');
     } else if (renderPage || state.page === 'scanner' && (
-      state.method === 'ocr' && previousConfig.ocrAvailable !== state.config.ocrAvailable ||
       state.method === 'qr' && previousConfig.qrAvailable !== state.config.qrAvailable
     )) render();
   } catch (e) {
@@ -364,13 +358,6 @@ async function action(el) {
   const a = el.dataset.action,
     id = el.dataset.id;
   if (a === 'theme') { window.SafeTapTheme?.toggle(); updateThemeButtons(); return; }
-  if (a === 'choose-photo' || a === 'take-photo') {
-    const input = $(a === 'take-photo' ? '#ocr-camera' : '#ocr-file');
-    if (state.page !== 'scanner' || state.method !== 'ocr' || !state.config.ocrAvailable || input.disabled) return;
-    input.value = '';
-    input.click();
-    return;
-  }
   if (a === 'close-modal') return $('#modal').close();
   if (a === 'more') {
     return modal('More options', '', `<nav class="more-nav" aria-label="More pages">${visibleNav().filter(([page]) => !['dashboard', 'attendance', 'scanner'].includes(page)).map(([page, symbol, label]) => btn(icon(symbol) + label, 'navigate', '', `data-page="${page}"`)).join('')}</nav><div class="more-account"><strong>${esc(state.user.name)}</strong><small>${state.user.role === 'admin' ? 'Administrator' : 'Class representative'}</small>${btn(icon('logout') + 'Sign out', 'logout', '')}</div>`);
@@ -649,7 +636,6 @@ document.addEventListener('change', async event => {
       });
       await refresh();
     }
-    if (el.id === 'ocr-file' || el.id === 'ocr-camera') await ocr(el.files[0]);
     if (el.id === 'filter-block') {
       state.filterBlock = el.value;
       render();

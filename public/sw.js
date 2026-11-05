@@ -1,7 +1,7 @@
 'use strict';
 
-const VERSION = 'safetap-shell-v14-role-boundaries';
-const BUILD = '14-role-boundaries';
+const VERSION = 'safetap-shell-v15-qr-nfc-search';
+const BUILD = '15-qr-nfc-search';
 const SCRIPTS = [
   '/theme.js', '/app.js', '/js/device-store.js', '/js/assets.js',
   '/js/student-directory.js', '/js/scanners.js', '/js/offline-controller.js', '/js/views.js'
@@ -25,6 +25,15 @@ self.addEventListener('activate', event => {
     .then(keys => Promise.all(keys
       .filter(key => key.startsWith('safetap-shell-') && key !== VERSION)
       .map(key => caches.delete(key))))
+    .then(async () => {
+      const cache = await caches.open('safetap-vendor-v1');
+      const requests = await cache.keys();
+      // Keep the QR library while removing the retired ID-photo download.
+      await Promise.all(requests.filter(request => {
+        const pathname = new URL(request.url).pathname;
+        return pathname.startsWith('/vendor/') && pathname !== '/vendor/html5-qrcode.min.js';
+      }).map(request => cache.delete(request)));
+    })
     .then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', event => {
