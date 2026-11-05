@@ -1,24 +1,61 @@
 'use strict';
 
-const VERSION = 'safetap-shell-v8-attendance-block';
-const SHELL = ['/', '/index.html', '/theme.js', '/theme.js?v=8-attendance-block', '/app.js', '/app.js?v=8-attendance-block', '/styles.css', '/styles.css?v=8-attendance-block', '/fonts.css', '/fonts.css?v=8-attendance-block', '/assets/fonts/OpenSans-Regular.ttf', '/assets/fonts/OpenSans-Semibold.ttf', '/assets/fonts/OpenSans-Bold.ttf', '/manifest.webmanifest', '/assets/icon.svg', '/assets/cics-floorplan.png', '/socket.io/socket.io.js'];
-self.addEventListener('install', event => event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
-self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('safetap-shell-') && k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())));
+const VERSION = 'safetap-shell-v14-role-boundaries';
+const BUILD = '14-role-boundaries';
+const SCRIPTS = [
+  '/theme.js', '/app.js', '/js/device-store.js', '/js/assets.js',
+  '/js/student-directory.js', '/js/scanners.js', '/js/offline-controller.js', '/js/views.js'
+];
+const SHELL = [
+  '/index.html',
+  ...[...SCRIPTS, '/styles.css', '/fonts.css'].map(file => `${file}?v=${BUILD}`),
+  '/assets/fonts/OpenSans-Regular.ttf', '/assets/fonts/OpenSans-Semibold.ttf',
+  '/assets/fonts/OpenSans-Bold.ttf', '/manifest.webmanifest', '/assets/icon.svg',
+  '/assets/cics-floorplan.png', '/socket.io/socket.io.min.js'
+];
+const SHELL_PATHS = new Set(SHELL.map(file => file.split('?')[0]));
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(VERSION)
+    .then(cache => cache.addAll(SHELL))
+    .then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys()
+    .then(keys => Promise.all(keys
+      .filter(key => key.startsWith('safetap-shell-') && key !== VERSION)
+      .map(key => caches.delete(key))))
+    .then(() => self.clients.claim()));
+});
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  if (event.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname === '/health' || url.pathname.startsWith('/socket.io/') && url.pathname !== '/socket.io/socket.io.js') return;
+  const socketTransport = url.pathname.startsWith('/socket.io/') && url.pathname !== '/socket.io/socket.io.min.js';
+  if (event.request.method !== 'GET' || url.origin !== location.origin ||
+    url.pathname.startsWith('/api/') || url.pathname === '/health' || socketTransport) return;
+
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request).catch(() => caches.match('/index.html')));
     return;
   }
-  if (SHELL.some(path => path.split('?')[0] === url.pathname)) {
-    event.respondWith(fetch(event.request).then(async response => {
-      if (response.ok) {
-        const cache = await caches.open(VERSION);
-        await cache.put(event.request, response.clone());
+  if (SHELL_PATHS.has(url.pathname)) {
+    event.respondWith((async () => {
+      // Build-versioned files are immutable. Reopening the app should not
+      // download identical scripts and styles over mobile data.
+      const cached = await caches.match(event.request);
+      if (cached && url.searchParams.get('v') === BUILD) return cached;
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) {
+          const cache = await caches.open(VERSION);
+          await cache.put(event.request, response.clone());
+        }
+        return response;
+      } catch (error) {
+        const fallback = cached || await caches.match(`${url.pathname}?v=${BUILD}`);
+        if (fallback) return fallback;
+        throw error;
       }
-      return response;
-    }).catch(async () => (await caches.match(event.request)) || caches.match(url.pathname)));
+    })());
     return;
   }
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));

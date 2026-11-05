@@ -12,6 +12,14 @@ const {
   TABLES,
   baseDb
 } = require('./domain');
+function decodeRow(table, row) {
+  return Object.fromEntries(Object.entries(schema[table]).map(([field, type]) => {
+    let value = row[field];
+    if (type === 'JSON' && typeof value === 'string') value = JSON.parse(value);
+    if (type === 'BOOLEAN') value = Boolean(value);
+    return [field, value];
+  }));
+}
 class MemoryStore {
   constructor(db, file = null) {
     this.db = structuredClone(db);
@@ -19,8 +27,13 @@ class MemoryStore {
     this.tail = Promise.resolve();
     this.sessions = new MemorySessionStore();
   }
-  read() {
-    return this.tail.then(() => structuredClone(this.db));
+  read(tables = TABLES) {
+    return this.tail.then(() => Object.fromEntries(TABLES.map(table => [table, tables.includes(table) ? structuredClone(this.db[table]) : []])));
+  }
+  async findUser(field, value) {
+    if (!['id', 'username'].includes(field)) throw new Error('Invalid user lookup.');
+    await this.tail;
+    return structuredClone(this.db.users.find(user => user[field] === value));
   }
   transact(fn) {
     const job = this.tail.then(async () => {
@@ -47,25 +60,26 @@ class MysqlStore {
     this.pool = pool;
     this.sessions = new MysqlSessionStore(pool);
   }
-  async load(conn) {
-    const db = {};
-    for (const table of TABLES) {
+  async findUser(field, value) {
+    if (!['id', 'username'].includes(field)) throw new Error('Invalid user lookup.');
+    const [rows] = await this.pool.execute(`SELECT * FROM users WHERE \`${field}\` = ? LIMIT 1`, [value]);
+    return rows[0] ? decodeRow('users', rows[0]) : undefined;
+  }
+  async load(conn, tables = TABLES) {
+    const db = Object.fromEntries(TABLES.map(table => [table, []]));
+    for (const table of tables) {
+      if (!TABLES.includes(table)) throw new Error('Invalid table.');
       const [rows] = await conn.query(`SELECT * FROM \`${table}\``);
-      db[table] = rows.map(row => Object.fromEntries(Object.entries(schema[table]).map(([field, type]) => {
-        let value = row[field];
-        if (type === 'JSON' && typeof value === 'string') value = JSON.parse(value);
-        if (type === 'BOOLEAN') value = Boolean(value);
-        return [field, value];
-      })));
+      db[table] = rows.map(row => decodeRow(table, row));
     }
     return db;
   }
-  async read() {
+  async read(tables = TABLES) {
     const conn = await this.pool.getConnection();
     try {
       await conn.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
       await conn.beginTransaction();
-      const db = await this.load(conn);
+      const db = await this.load(conn, tables);
       await conn.commit();
       return db;
     } catch (e) {
@@ -75,21 +89,25 @@ class MysqlStore {
       conn.release();
     }
   }
-  async transact(fn) {
+  async transact(fn, options = {}) {
     const conn = await this.pool.getConnection();
     try {
       await conn.beginTransaction();
       await conn.query('SELECT id FROM app_lock WHERE id=1 FOR UPDATE');
-      const before = await this.load(conn),
+      const before = options.scans
+        ? await require('./scan-data').loadScanData(conn, options.scans, options.userId, decodeRow)
+        : await this.load(conn),
         next = structuredClone(before);
       const result = await fn(next);
       for (const table of TABLES) {
         const fields = Object.keys(schema[table]);
         const previous = new Map(before[table].map(r => [r.id, JSON.stringify(r)]));
-        for (const row of next[table]) {
-          if (previous.get(row.id) === JSON.stringify(row)) continue;
-          const values = fields.map(k => schema[table][k] === 'JSON' ? JSON.stringify(row[k]) : row[k] ?? null);
-          await conn.execute(`INSERT INTO \`${table}\` (${fields.map(k => '`' + k + '`').join(',')}) VALUES (${fields.map(() => '?').join(',')}) ON DUPLICATE KEY UPDATE ${fields.filter(k => k !== 'id').map(k => '`' + k + '`=VALUES(`' + k + '`)').join(',')}`, values);
+        const changed = next[table].filter(row => previous.get(row.id) !== JSON.stringify(row));
+        for (let offset = 0; offset < changed.length; offset += 100) {
+          const batch = changed.slice(offset, offset + 100);
+          const values = batch.flatMap(row => fields.map(key => schema[table][key] === 'JSON' ? JSON.stringify(row[key]) : row[key] ?? null));
+          const placeholders = batch.map(() => `(${fields.map(() => '?').join(',')})`).join(',');
+          await conn.execute(`INSERT INTO \`${table}\` (${fields.map(key => '\`' + key + '\`').join(',')}) VALUES ${placeholders} ON DUPLICATE KEY UPDATE ${fields.filter(key => key !== 'id').map(key => '\`' + key + '\`=VALUES(\`' + key + '\`)').join(',')}`, values);
         }
       }
       await conn.commit();

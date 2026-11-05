@@ -392,19 +392,32 @@ function correctBaseline(db, user, eventId, input) {
   audit(db, user, 'baseline.corrected', `${event.name}: ${s.studentNumber}: ${reason}`);
   return p;
 }
-function eventSummary(db, eventId) {
+function eventForUser(event, user) {
+  if (!event || !user || user.role === 'admin') return event;
+  const {createdBy, ...visible} = event;
+  visible.coverage = event.coverage.map(block => {
+    if (!block.session) return block;
+    const {userId, ...session} = block.session;
+    return {...block, session};
+  });
+  return visible;
+}
+function eventSummary(db, eventId, user) {
   const event = byId(db.events, eventId, 'Event');
   const checks = db.checkins.filter(c => c.eventId === eventId);
+  const confirmed = new Set(checks.filter(c => c.status === 'confirmed').map(c => c.studentId));
   const people = db.participants.filter(p => p.eventId === eventId).map(p => ({
     ...p,
-    safe: checks.some(c => c.studentId === p.studentId && c.status === 'confirmed')
+    safe: confirmed.has(p.studentId)
   }));
   const expected = people.filter(p => p.expected),
     safe = expected.filter(p => p.safe).length;
   return {
-    event,
+    event: eventForUser(event, user),
     people,
-    checkins: checks,
+    checkins: !user || user.role === 'admin' ? checks : checks.filter(c => c.status === 'confirmed').map(c => ({
+      studentId: c.studentId, method: c.method, receivedAt: c.receivedAt, status: c.status
+    })),
     total: expected.length,
     safe,
     unaccounted: expected.length - safe,
@@ -413,28 +426,37 @@ function eventSummary(db, eventId) {
 }
 function snapshot(db, user) {
   const active = db.events.find(e => e.status === 'active');
+  const classes = db.classes.filter(c => c.date === day() && (user.role === 'admin' || user.blockIds.includes(c.blockId)));
+  const classIds = new Set(classes.map(c => c.id));
+  const activeSummary = active ? eventSummary(db, active.id, user) : null;
   return {
     user: publicUser(user),
     blocks: db.blocks,
     rooms: db.rooms,
-    students: db.students.map(({
+    students: db.students.filter(s => user.role === 'admin' || s.active).map(({
       nfcUid,
       qrToken,
       ...s
     }) => s),
-    classes: db.classes.filter(c => c.date === day() && (user.role === 'admin' || user.blockIds.includes(c.blockId))),
-    attendance: db.attendance.filter(a => db.classes.some(c => c.id === a.classId && c.date === day() && (user.role === 'admin' || user.blockIds.includes(c.blockId)))),
-    active: active ? eventSummary(db, active.id) : null,
+    classes: classes.map(c => {
+      if (user.role === 'admin') return c;
+      const {userId, ...visible} = c;
+      return visible;
+    }),
+    attendance: db.attendance.filter(a => classIds.has(a.classId)),
+    active: activeSummary,
     history: db.events.slice().sort((a, b) => b.startedAt.localeCompare(a.startedAt)).map(e => {
       const {
         people,
         checkins,
         ...summary
-      } = eventSummary(db, e.id);
+      } = e.id === active?.id ? activeSummary : eventSummary(db, e.id, user);
       return summary;
     }),
     reps: user.role === 'admin' ? db.users.filter(u => u.role === 'rep').map(publicUser) : [],
     audit: user.role === 'admin' ? db.audit.slice().sort((a, b) => b.time.localeCompare(a.time)).slice(0, 80) : [],
+    directoryVersion: require('./offline-directory').directoryVersion(db, user.role === 'admin'),
+    offlineDirectoryVersion: require('./offline-directory').directoryVersion(db),
     serverTime: now(),
     date: day()
   };
@@ -462,5 +484,6 @@ module.exports = {
   reviewCheckin,
   correctBaseline,
   eventSummary,
+  eventForUser,
   snapshot
 };

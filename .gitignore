@@ -12,3 +12,25 @@ node_modules/
 .runtime/
 public/vendor/
 coverage/
+
+# Local workspace material
+/notes/
+/private/
+/archive/
+/references/
+/exports/
+/.impeccable/
+/.agents/
+/.codex/
+/AGENTS.md
+/DESIGN.md
+/PRODUCT.md
+/UI-REVIEW.md
+/DEPLOYMENT-CHECK.md
+/MIGRATION.md
+/ARCHITECTURE.md
+/TESTING.md
+/*.pdf
+/*.tar.gz
+/*CNAME*.txt
+*.log
