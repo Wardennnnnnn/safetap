@@ -25,6 +25,16 @@ Set `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` for the deploye
 
 The platform supplies `PORT`. Run the normal MySQL mode for persistent deployment; `npm run demo` uses fictional accounts and local file storage.
 
+## Second deployment
+
+`deploy/render-preview.yaml` configures the `safetap-preview` service from the `ui/safetap-foundation` branch. Its normal MySQL startup uses the same database and accounts as the original service. Despite the URL's preview name, changes to students, attendance and events affect the shared live records.
+
+The Blueprint references `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` from the original `safetap` service. Set `DB_CA_CERT` in the second service's environment settings to the database CA certificate's PEM content. Startup writes this certificate outside the public directory before the existing TLS validation runs. Credentials and the certificate are not stored in Git.
+
+The Blueprint only manages `safetap-preview`; it does not manage the original `safetap` service or run database initialization or migrations. Automatic deploys and Blueprint auto-sync remain off. After rotating credentials on the original service, sync this Blueprint and redeploy the second service so it receives the updated values.
+
+Browser sessions and offline queues belong to each URL separately. Upload pending records on their original URL before switching. Real-time socket notifications stay within each service; the existing polling refresh picks up changes made through the other service.
+
 ## HTTPS and local hosting
 
 For local hosting, `deploy/safetap.service` is a sample systemd user service. Adjust its working directory and Node path to match the installation. Put the app behind an HTTPS reverse proxy and enable `TRUST_PROXY=1` and `COOKIE_SECURE=1` only for that trusted setup. The proxy must forward the original host/protocol and support Socket.IO WebSocket upgrades.

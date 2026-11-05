@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: safetap-preview
+    runtime: node
+    plan: free
+    region: singapore
+    repo: https://github.com/Wardennnnnnn/safetap
+    branch: ui/safetap-foundation
+    autoDeployTrigger: 'off'
+    buildCommand: npm ci && npm run vendor
+    startCommand: >-
+      node -e 'const fs = require("node:fs"); fs.mkdirSync(".runtime/cloud", {recursive: true}); fs.writeFileSync(".runtime/cloud/aiven-ca.pem", process.env.DB_CA_CERT, {mode: 0o600});'
+      && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.23.1
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: '1'
+      - key: COOKIE_SECURE
+        value: '1'
+      - key: DB_SSL
+        value: '1'
+      - key: DB_SSL_CA_FILE
+        value: .runtime/cloud/aiven-ca.pem
+      - key: DB_HOST
+        fromService:
+          type: web
+          name: safetap
+          envVarKey: DB_HOST
+      - key: DB_PORT
+        fromService:
+          type: web
+          name: safetap
+          envVarKey: DB_PORT
+      - key: DB_USER
+        fromService:
+          type: web
+          name: safetap
+          envVarKey: DB_USER
+      - key: DB_PASSWORD
+        fromService:
+          type: web
+          name: safetap
+          envVarKey: DB_PASSWORD
+      - key: DB_NAME
+        fromService:
+          type: web
+          name: safetap
+          envVarKey: DB_NAME
