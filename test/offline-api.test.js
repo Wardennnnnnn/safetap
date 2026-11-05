@@ -71,7 +71,7 @@ test('public guest session/config/version are normal 200 responses while protect
   assert.equal((await get('/api/state', false)).status, 401);
   assert.equal((await get('/api/session')).data.user.role, 'rep');
   const version = await get('/api/version', false);
-  assert.equal(version.data.build, 'v15-qr-nfc-search');
+  assert.equal(version.data.build, 'v26-photo');
   assert.equal(version.data.version, '1.1.0');
   assert.equal(version.headers['cache-control'], 'no-store');
   const csp = version.headers['content-security-policy'];

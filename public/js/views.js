@@ -9,7 +9,7 @@ globalThis.SafeTapViews = {create({state, helpers, currentEvent, offlineReadines
     $('#app').innerHTML = `
       <main class="login-page">
       <section class="login-story">
-      <div class="login-brand-row"><a class="brand" href="/"><img src="/assets/icon.svg" alt="">SafeTap</a>${themeButton()}
+      <div class="login-brand-row"><a class="brand" href="/"><img src="/assets/icon-maroon.svg" alt="">SafeTap</a>${themeButton()}
       </div>
       <div class="login-message">
       <h1>Know who<br> made it safely.
@@ -41,7 +41,7 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
       <div class="layout">
       <aside class="sidebar">
       <div class="sidebar-brand">
-      <div class="brand"><img src="/assets/icon.svg" alt="">SafeTap
+      <div class="brand"><img src="/assets/icon-maroon.svg" alt="">SafeTap
       </div>
       <p>CICS · Alangilan
       </p>
@@ -56,7 +56,7 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
       <div class="user-card">
       <div class="avatar">${esc(initials(state.user.name))}
       </div>
-      <div class="user-info"><strong>${esc(state.user.name)}</strong><small>${state.user.role === 'admin' ? 'Administrator' : 'Class representative'}</small>
+      <div class="user-info"><strong title="${esc(state.user.name)}">${esc(state.user.name)}</strong><small>${state.user.role === 'admin' ? 'Administrator' : 'Class representative'}</small>
       </div><button class="logout" data-action="logout" title="Sign out" aria-label="Sign out">${icon('logout')}</button>
       </div>
       </div>
@@ -70,11 +70,11 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
       </header>
       <div class="content">
       <div id="connection-note">${connectionNotice()}</div>
-      <div id="page" tabindex="-1">${{
+      <div id="page" data-page="${esc(state.page)}" tabindex="-1">${{
       dashboard, attendance, scanner, students, team, history, offline
     }[state.page]()}
       </div>
-      <footer class="footer-note"><span>Updated ${fmt(state.data.serverTime)}</span>
+      <footer class="footer-note"><span>Updated ${fmt(state.data.serverTime)}</span><span>Campus photo: <a href="https://commons.wikimedia.org/wiki/File:College_of_Engineering,_Architecture,_Fine_Arts_and_Computing_Sciences_Building.JPG">Kampfgruppe</a> · <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a> · resized and tinted</span>
       </footer>
       </div>
       </main>
@@ -84,16 +84,16 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
   }
   function eventStrip() {
     const active = state.data.active;
-    if (!active) return `<div class="event-strip"><strong>No active evacuation</strong></div>`;
+    if (!active) return `<div class="event-strip"><div class="event-context"><span class="event-eyebrow">Evacuation status</span><strong>No active evacuation</strong><p>Counts will appear when an event starts.</p></div>${state.user.role === 'admin' ? btn('Start evacuation', 'start-event', 'primary', state.online ? '' : 'disabled') : ''}</div>`;
     return `<div class="event-strip">
-      <div class="event-context"><strong>${esc(active.event.name)}</strong><p>${esc(active.event.area)} · ${fmt(active.event.startedAt)}</p></div>
-      <div class="actions">${badge(active.event.type === 'drill' ? 'Drill active' : 'Evacuation active', 'blue')}${btn('Scan IDs', 'navigate', 'small', 'data-page="scanner"')}${state.user.role === 'admin' ? btn('End event', 'close-event', 'small', `data-id="${active.event.id}"`) : ''}</div>
+      <div class="event-context"><span class="event-eyebrow">Evacuation status</span><strong>${esc(active.event.name)}</strong><p>${esc(active.event.area)} · Started ${fmt(active.event.startedAt)}</p></div>
+      <div class="actions">${badge(active.event.type === 'drill' ? 'DRILL ACTIVE' : 'EVACUATION ACTIVE', active.event.type === 'drill' ? 'blue' : 'red')}${btn('Scan IDs', 'navigate', 'primary', 'data-page="scanner"')}${state.user.role === 'admin' ? btn('End event', 'close-event', 'danger small', `data-id="${active.event.id}"`) : ''}</div>
     </div>`;
   }
   function metrics(event) {
     const items = [
-      ['Still missing', event?.unaccounted ?? '—', 'pending'],
-      ['Arrived safely', event?.safe ?? '—', 'safe'],
+      ['Still missing', event?.unaccounted ?? '—', event?.unaccounted > 0 ? (event.event?.type === 'emergency' ? 'urgent' : 'pending') : ''],
+      ['Arrived safely', event?.safe ?? '—', event?.safe > 0 ? 'safe' : ''],
       ['Expected', event?.total ?? '—', ''],
       ['Other arrivals', event?.additional ?? '—', '']
     ];
@@ -111,10 +111,13 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
     }));
     const checkins = (active?.checkins || []).filter(checkin => checkin.status === 'confirmed')
       .sort((first, second) => second.receivedAt.localeCompare(first.receivedAt)).slice(0, 6);
+    const lastEvent = state.data.history.find(item => item.event.status !== 'active');
+    const openSessions = state.data.classes.filter(item => item.status === 'open').length;
+    const readiness = `<div class="idle-readiness" aria-label="Attendance readiness"><div><strong>${state.data.students.filter(student => student.active).length}</strong><span>Active students</span></div><div><strong>${openSessions}</strong><span>${state.user.role === 'rep' ? 'My open sessions today' : 'Open sessions today'}</span></div><div><strong>${lastEvent ? esc(lastEvent.event.name) : 'None yet'}</strong><span>${lastEvent ? `Last event · ${fmt(lastEvent.event.startedAt)}` : 'Last event'}</span></div></div>`;
     const deviceStatus = state.user.role === 'rep' ? `<section class="device-summary"><div><strong>Student list on this phone</strong><small id="directory-updated">${state.pack?.userId === state.user.id ? `Downloaded ${fmt(state.pack.preparedAt)}` : 'Student list not downloaded'}</small><span id="offline-status">${offlineSummary()}</span></div>${btn('Offline records', 'navigate', 'small', 'data-page="offline"')}</section>` : '';
-    return heading('', 'Evacuation overview', '', state.user.role === 'admin' && !active ? btn('Start evacuation', 'start-event', 'primary') : btn('Refresh', 'refresh')) + deviceStatus + eventStrip() + metrics(active) + (active ? `<div class="missing-shortcut">${btn('Find missing students', 'show-missing', 'small')}</div>` : '') + `
-      <div class="dashboard-grid">
-        <section class="card"><div class="card-header"><h2 class="section-title">${icon('attendance')}Block progress</h2>${badge(`${coverage.length} blocks`)}</div>
+    return heading('', 'Evacuation overview', '', btn('Refresh', 'refresh')) + `<section class="overview-board" aria-label="Evacuation status">` + eventStrip() + (active ? metrics(active) : readiness) + (active?.total === 0 ? '<p class="overview-note">No students are on the expected list for this event. Additional arrivals are counted separately.</p>' : '') + (active?.total > 0 ? `<div class="expected-progress"><span>${active.safe} of ${active.total} expected students arrived</span><progress value="${active.safe}" max="${active.total}" aria-label="Expected students who arrived"></progress></div>` : '') + `<p class="overview-updated">Last server update: <strong>${fmt(state.data.serverTime)}</strong>${state.online ? '' : ' · Offline data'}</p>` + (active?.unaccounted > 0 ? `<div class="missing-shortcut">${btn('Find missing students', 'show-missing', 'small')}</div>` : '') + `</section>` + deviceStatus + `
+      <div class="dashboard-grid ${active ? '' : 'no-event'}">
+        <details class="card disclosure-card coverage-card" data-disclosure="coverage" ${state.panels?.coverage ? 'open' : ''}><summary><span class="section-title">${icon('attendance')}Block progress ${badge(`${coverage.length} blocks`)}</span><span class="disclosure-chevron">${icon('chevron')}</span></summary>
           <div class="card-body">${coverage.length ? coverage.map(block => {
             const expected = active?.people.filter(person => person.blockId === block.blockId && person.expected) || [];
             const arrived = expected.filter(person => person.safe).length;
@@ -122,13 +125,13 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
               <progress value="${arrived}" max="${expected.length || 1}" aria-label="${esc(block.blockLabel)} progress"></progress>
               ${block.session ? `<div class="row-between"><small>${esc(roomName(block.session.roomId))}</small><small>${fmt(block.session.updatedAt)}</small></div>` : ''}</div>`;
           }).join('') : empty('No blocks yet', '')}</div>
-        </section>
-        <section class="card"><div class="card-header"><h2 class="section-title">${icon('clock')}Recent arrivals</h2>${badge('Confirmed', 'green')}</div>
+        </details>
+        ${active ? `<section class="card"><div class="card-header"><h2 class="section-title">${icon('clock')}Recent arrivals</h2>${badge('Confirmed', 'green')}</div>
           <div class="card-body">${checkins.length ? checkins.map(checkin => {
             const person = active.people.find(person => person.studentId === checkin.studentId);
             return `<div class="list-row"><div class="mini-avatar">${esc(initials(person?.name || '?'))}</div><div><strong>${esc(person?.name)}</strong><small>${esc(person?.blockLabel)} · ${esc(checkin.method.toUpperCase())}</small><small>${fmt(checkin.receivedAt)}</small></div></div>`;
           }).join('') : empty('No arrivals yet', '')}</div>
-        </section>
+        </section>` : ''}
       </div>
       <details class="card disclosure-card" data-disclosure="building" ${state.panels?.building ? 'open' : ''}>
         <summary><span class="section-title">${icon('building')}Building overview</span><span class="disclosure-chevron">${icon('chevron')}</span></summary>
@@ -137,9 +140,9 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
           <p class="map-note">Last recorded rooms, not current locations. Room clearance is not tracked.</p>
           ${btn('Original floor plan', 'reference', 'small')}${roomDetail()}</div>
       </details>
-      <section class="card" id="student-list"><div class="card-header"><h2 class="section-title">${icon('students')}Students</h2>${badge(active ? `${active.people.length} records` : 'No event')}</div>
-        ${peopleFilters()}<div class="table-wrap">${peopleTable(active ? filteredPeople(active.people) : [])}</div>
-      </section>`;
+      ${active ? `<section class="card" id="student-list"><div class="card-header"><h2 class="section-title">${icon('students')}Students</h2>${badge(`${active.people.length} records`)}</div>
+        ${peopleFilters()}<div class="table-wrap">${peopleTable(filteredPeople(active.people))}</div>
+      </section>` : ''}`;
   }
   function roomPeople(roomId) {
     if (state.data.active) return state.data.active.people.filter(p => p.roomId === roomId && p.expected);
@@ -160,7 +163,12 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
         safe = people.filter(p => p.safe).length,
         cls = !r.monitored ? 'gray' : people.length ? !state.data.active ? 'blue' : safe === people.length ? 'green' : 'amber' : '';
       return `<g class="room-group ${cls} ${state.room === r.id ? 'selected' : ''}" data-action="room" data-id="${r.id}" tabindex="0" role="button" aria-label="${esc(r.name)}: ${r.monitored ? people.length ? state.data.active ? `${safe} of ${people.length} accounted` : `${people.length} present in class` : 'no attendance recorded' : 'CAFAD not included in SafeTap'}"><rect class="room-shape" x="${i * 112 + 14}" y="15" width="100" height="92" rx="5"/><text class="room-name" x="${i * 112 + 64}" y="51" text-anchor="middle">${esc(r.name.split(' · ').at(-1).slice(0, 13))}</text><text class="room-count" x="${i * 112 + 64}" y="77" text-anchor="middle">${!r.monitored ? 'CAFAD' : people.length ? state.data.active ? `${safe} / ${people.length} safe` : `${people.length} present` : 'No attendance'}</text></g>`;
-    }).join('')}</svg>
+    }).join('')}</svg><div class="room-tiles">${rooms.map(r => {
+      const people = roomPeople(r.id);
+      const safe = people.filter(p => p.safe).length;
+      const status = !r.monitored ? 'CAFAD not included' : !people.length ? 'No attendance' : state.data.active ? `${safe} / ${people.length} accounted` : `${people.length} present in class`;
+      return `<button type="button" class="room-tile ${state.room === r.id ? 'selected' : ''}" data-action="room" data-id="${esc(r.id)}" aria-pressed="${state.room === r.id}"><strong>${esc(r.name)}</strong><span>${esc(status)}</span></button>`;
+    }).join('')}</div>
       </div>`;
   }
   function roomDetail() {
@@ -175,12 +183,12 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
   }
   function peopleFilters() {
     return `
-      <div class="filter-row"><input id="people-search" aria-label="Search students" placeholder="Search name or student number" value="${esc(state.search)}"><select id="filter-program" aria-label="Filter program"><option value="">All programs</option ${state.filterProgram === 'IT' ? 'selected' : ''}>IT</option><option ${state.filterProgram === 'CS' ? 'selected' : ''}>CS</option></select><select id="filter-block" aria-label="Filter block"><option value="">All blocks</option>${blockOptions(state.filterBlock)}</select><select id="filter-status" aria-label="Filter status"><option value="">All statuses</option><option value="safe" ${state.filterStatus === 'safe' ? 'selected' : ''}>Arrived safely</option><option value="pending" ${state.filterStatus === 'pending' ? 'selected' : ''}>Still missing</option></select>
+      <div class="filter-row"><input id="people-search" aria-label="Search students" placeholder="Search name or student number" value="${esc(state.search)}"><select id="filter-program" aria-label="Filter program"><option value="">All programs</option><option ${state.filterProgram === 'IT' ? 'selected' : ''}>IT</option><option ${state.filterProgram === 'CS' ? 'selected' : ''}>CS</option></select><select id="filter-block" aria-label="Filter block"><option value="">All blocks</option>${blockOptions(state.filterBlock)}</select><select id="filter-status" aria-label="Filter status"><option value="">All statuses</option><option value="safe" ${state.filterStatus === 'safe' ? 'selected' : ''}>Arrived safely</option><option value="pending" ${state.filterStatus === 'pending' ? 'selected' : ''}>Still missing</option></select>
       </div>`;
   }
   function peopleTable(people) {
     return people.length ? `
-      <table>
+      <table class="people-table">
       <thead>
       <tr><th>Student</th><th>Block / room</th><th>Status</th>
       </tr>
@@ -242,7 +250,7 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
       reader = `<label class="field">Find student<input id="scan-search" type="search" placeholder="Name or student number" autocomplete="off"></label><div id="candidates">${empty('Enter at least 2 characters', '')}</div>`;
     }
     return heading('', 'Scan IDs', '') + `<div class="scanner-layout">
-      <section class="card scanner-card"><div class="card-header"><div><h2>${event ? esc(event.name) : 'No active event'}</h2>${event ? `<p>${esc(event.area)}</p>` : '<p>Connect to download an active event.</p>'}</div>${badge(event ? state.online ? 'Active' : 'Offline' : 'Not ready', event ? state.online ? 'green' : 'amber' : '')}</div>
+      <section class="card scanner-card"><div class="card-header"><div><h2>${event ? esc(event.name) : 'No active event'}</h2>${event ? `<p>${esc(event.area)}</p>` : '<p>Connect to download an active event.</p>'}</div>${event ? badge(event.type === 'drill' ? 'DRILL' : 'EVACUATION', event.type === 'drill' ? 'blue' : 'red') + (state.online ? '' : badge('Offline', 'amber')) : badge('Not ready', 'amber')}</div>
         <div class="card-body"><div class="scanner-methods" role="group" aria-label="Scanning method">${methods.map(([id, symbol, label]) => btn(icon(symbol) + label, 'method', id === state.method ? 'active' : '', `data-method="${id}" aria-pressed="${id === state.method}"`)).join('')}</div>
           <div id="scan-result" role="status" aria-live="polite" aria-atomic="true"></div>${reader}</div>
       </section>
@@ -264,12 +272,12 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
       <h2 class="section-title">${icon('students')}Student directory
       </h2>${badge(state.data.students.length + ' registered')}
       </div>
-      <div class="filter-row"><input id="directory-search" placeholder="Search name or student number" aria-label="Search directory">
+      <div class="filter-row"><input id="directory-search" placeholder="Search name or student number" aria-label="Search directory"><select id="directory-block" aria-label="Filter directory by block"><option value="">All blocks</option>${blockOptions(state.directoryBlock)}</select>
       </div>
       <div class="table-wrap">
       <table>
       <thead>
-      <tr><th>Student</th><th>Program / block</th><th>Status</th><th>Student IDs</th>
+      <tr><th>Student</th><th>Program / block</th><th>Status</th><th>Actions</th>
       </tr>
       </thead>
       <tbody id="directory-body">${directoryRows('')}
@@ -297,9 +305,9 @@ ${state.config.demo ? '<details class="demo-accounts"><summary>Demo accounts</su
       </section>`;
   }
   function directoryRows(query) {
-    return state.data.students.filter(s => `${s.name} ${s.studentNumber}`.toLowerCase().includes(query.toLowerCase())).map(s => `
-      <tr><td><strong>${esc(s.name)}</strong><small>${esc(s.studentNumber)}</small></td><td>${esc(blockName(s.blockId))}</td><td>${badge(s.active ? 'Active' : 'Inactive', s.active ? 'green' : '')}</td><td>
-      <div class="actions">${btn('Edit', 'edit-student', 'small', `data-id="${s.id}"`)}${btn('QR card', 'student-qr', 'small', `data-id="${s.id}"`)}
+    return state.data.students.filter(s => (!state.directoryBlock || s.blockId === state.directoryBlock) && `${s.name} ${s.studentNumber}`.toLowerCase().includes(query.toLowerCase())).map(s => `
+      <tr><td><strong>${esc(s.name)}</strong><small>${esc(s.studentNumber)}</small></td><td>${esc(blockName(s.blockId))}</td><td>${s.active ? 'Active' : badge('Inactive', 'amber')}</td><td>
+      <div class="actions">${btn('Edit', 'edit-student', 'small quiet', `data-id="${s.id}"`)}${btn('QR card', 'student-qr', 'small quiet', `data-id="${s.id}"`)}
       </div></td>
       </tr>`).join('');
   }

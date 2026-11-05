@@ -34,7 +34,7 @@ test('appearance follows the device until a user chooses and survives reload', (
   assert.equal(e.theme.current, 'dark');
   assert.equal(device({saved: e.storage.get('safetap-theme')}).theme.current, 'dark');
   assert.equal(e.root.style.colorScheme, 'dark');
-  assert.equal(e.meta.content, '#101923');
+  assert.equal(e.meta.content, '#4b1019');
 });
 
 test('invalid preferences and unavailable storage do not break appearance switching', () => {

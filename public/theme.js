@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = theme === 'dark' ? '#101923' : '#183451';
+    if (meta) meta.content = '#4b1019';
     document.dispatchEvent(new Event('safetap:theme'));
   }
   window.SafeTapTheme = {

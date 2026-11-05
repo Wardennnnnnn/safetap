@@ -1,7 +1,7 @@
 'use strict';
 
-const VERSION = 'safetap-shell-v15-qr-nfc-search';
-const BUILD = '15-qr-nfc-search';
+const VERSION = 'safetap-shell-v26-photo';
+const BUILD = '26-photo';
 const SCRIPTS = [
   '/theme.js', '/app.js', '/js/device-store.js', '/js/assets.js',
   '/js/student-directory.js', '/js/scanners.js', '/js/offline-controller.js', '/js/views.js'
@@ -10,7 +10,7 @@ const SHELL = [
   '/index.html',
   ...[...SCRIPTS, '/styles.css', '/fonts.css'].map(file => `${file}?v=${BUILD}`),
   '/assets/fonts/OpenSans-Regular.ttf', '/assets/fonts/OpenSans-Semibold.ttf',
-  '/assets/fonts/OpenSans-Bold.ttf', '/manifest.webmanifest', '/assets/icon.svg',
+  '/assets/fonts/OpenSans-Bold.ttf', '/manifest.webmanifest', '/assets/icon-maroon.svg', '/assets/alangilan-campus-2010.jpg',
   '/assets/cics-floorplan.png', '/socket.io/socket.io.min.js'
 ];
 const SHELL_PATHS = new Set(SHELL.map(file => file.split('?')[0]));

@@ -59,7 +59,7 @@ globalThis.SafeTapOffline = {create({state, device, directory, api, ui}) {
       } catch (error) {
         throw new Error(`This phone could not save the scan. ${error.message || 'Allow site storage and try again.'}`);
       }
-      showResult(duplicate ? 'Already recorded on this phone · counted once' : 'Saved on this device — waiting to upload', 'pending', student.name);
+      showResult(duplicate ? 'Already recorded on this phone · counted once' : 'Saved on this device', 'pending', student.name);
       scheduleUpload();
     } catch (error) {
       showResult(error.message, 'error');
@@ -112,8 +112,8 @@ globalThis.SafeTapOffline = {create({state, device, directory, api, ui}) {
         if (acknowledged.size < scans.length) break;
       }
       if (accepted || rejected) {
-        showResult(`${accepted} saved to server or already recorded · ${review} waiting for administrator approval · ${rejected} need attention.`, rejected ? 'error' : '');
-        toast(`Sync complete: ${accepted} accepted or already recorded; ${rejected} need attention.`);
+        if (state.page !== 'scanner') showResult(`${accepted} saved to server or already recorded · ${review} waiting for administrator approval · ${rejected} need attention.`, rejected ? 'error' : '');
+        toast(`Sync: ${accepted} saved or already recorded · ${review} awaiting review · ${rejected} need attention.`);
         // A failed dashboard refresh must not turn an acknowledged upload into
         // an apparent failure or put committed records back into the queue.
         await refresh(false).catch(() => {});

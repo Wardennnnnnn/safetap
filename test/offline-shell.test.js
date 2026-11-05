@@ -65,14 +65,15 @@ test('installed shell contains all app dependencies and reloads offline without 
     return response === undefined ? undefined : await response;
   };
   assert.equal((await dispatch('/', 'navigate')).url, '/index.html');
-  assert.equal((await dispatch('/js/offline-controller.js?v=15-qr-nfc-search')).url, '/js/offline-controller.js?v=15-qr-nfc-search');
+  assert.equal((await dispatch('/js/offline-controller.js?v=26-photo')).url, '/js/offline-controller.js?v=26-photo');
   assert.equal((await dispatch('/socket.io/socket.io.min.js')).url, '/socket.io/socket.io.min.js');
+  assert.equal((await dispatch('/assets/alangilan-campus-2010.jpg')).url, '/assets/alangilan-campus-2010.jpg');
   assert.equal(await dispatch('/api/offline'), undefined);
   assert.equal(await dispatch('/api/session'), undefined);
   assert.equal(await dispatch('/health'), undefined);
   assert.equal(await dispatch('/socket.io/?transport=polling'), undefined);
   const before = network.length;
   online = true;
-  await dispatch('/app.js?v=15-qr-nfc-search');
+  await dispatch('/app.js?v=26-photo');
   assert.equal(network.length, before, 'unchanged versioned code does not download on reopening');
 });

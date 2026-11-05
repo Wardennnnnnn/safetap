@@ -166,11 +166,78 @@ test('all client pages render, escape student HTML, and preserve CAFAD scope', a
   assert(e.node('#app').innerHTML.includes('Not included in SafeTap'));
   assert(e.node('#app').innerHTML.includes('CAFAD'));
 });
+
+test('overview keeps event type, data age, counts and role-specific actions clear', async () => {
+  const e = await ready();
+  e.run('state.page="dashboard";state.online=false;render()');
+  let html = e.node('#app').innerHTML;
+  assert.match(html, /DRILL ACTIVE/);
+  assert.match(html, /Last server update:/);
+  assert.match(html, /Offline data/);
+  assert.match(html, /Still missing/);
+  assert.match(html, /Arrived safely/);
+  assert.match(html, /data-action="show-missing"/);
+  assert.match(html, /data-disclosure="coverage"/);
+  assert.match(html, /data-action="close-event"/);
+  e.run('state.user={...state.user,role:"rep"};state.data.active.event.type="emergency";state.online=true;render()');
+  html = e.node('#app').innerHTML;
+  assert.match(html, /EVACUATION ACTIVE/);
+  assert.doesNotMatch(html, /data-action="close-event"/);
+  assert.doesNotMatch(html, /Offline data/);
+  assert.match(html, /Student list on this phone/);
+});
+
+test('overview program filter retains selected program across renders', async () => {
+  const e = await ready();
+  e.run('state.page="dashboard";state.filterProgram="IT";render()');
+  assert.match(e.node('#app').innerHTML, /<option selected>IT<\/option>/);
+  e.run('state.filterProgram="CS";render()');
+  assert.match(e.node('#app').innerHTML, /<option selected>CS<\/option>/);
+});
+
+test('student directory block filter works together with search', async () => {
+  const e = await ready();
+  const target = e.db.students.find(student => student.blockId === e.db.blocks[1].id);
+  e.context.targetBlock = target.blockId;
+  e.context.targetName = target.name;
+  e.run('state.directoryBlock=targetBlock');
+  assert.match(e.run('directoryRows(targetName)'), new RegExp(target.name));
+  assert.equal(e.run('directoryRows("not-a-student")'), '');
+  assert.doesNotMatch(e.run('directoryRows("")'), new RegExp(e.db.students[0].name));
+});
+
+test('overview without an event avoids showing empty evacuation totals', async () => {
+  const e = await ready();
+  e.run('state.page="dashboard";state.data.active=null;render()');
+  const html = e.node('#app').innerHTML;
+  assert.match(html, /No active evacuation/);
+  assert.match(html, /Counts will appear when an event starts/);
+  assert.match(html, /data-action="start-event"/);
+  assert.match(html, /Block progress/);
+  assert.doesNotMatch(html, /aria-label="Evacuation totals"/);
+  assert.doesNotMatch(html, /Recent arrivals/);
+});
+test('overview separates additional arrivals and never implies zero expected means all safe', async () => {
+  const e = await ready();
+  e.run('state.page="dashboard";state.data.active.total=0;state.data.active.safe=0;state.data.active.unaccounted=0;state.data.active.additional=3;render()');
+  let html = e.node('#app').innerHTML;
+  assert.match(html, /No students are on the expected list/);
+  assert.match(html, /Other arrivals/);
+  assert.doesNotMatch(html, /Expected students who arrived/);
+  assert.doesNotMatch(html, /data-action="show-missing"/);
+  e.run('state.data.active.total=2;state.data.active.safe=1;state.data.active.unaccounted=1;state.data.active.event.type="emergency";render()');
+  html = e.node('#app').innerHTML;
+  assert.match(html, /1 of 2 expected students arrived/);
+  assert.match(html, /class="metric urgent"/);
+  assert.match(html, /data-action="show-missing"/);
+});
 test('floor plan shows open class attendance before an event and preserves the event snapshot', async () => {
   const e = await ready();
   e.context.savedEvent = structuredClone(e.context.testState.active);
   e.run('state.floor=3;state.room="F3-3";state.data.active=null');
   assert.match(e.run('floorMap()'), /1 present/);
+  assert.match(e.run('floorMap()'), /class="room-tiles"/);
+  assert.match(e.run('floorMap()'), /data-action="room"/);
   assert.match(e.run('roomDetail()'), /Present in class/);
   assert.doesNotMatch(e.run('roomDetail()'), /Still missing|Not on the expected list/);
   e.run('state.data.attendance.push({...state.data.attendance[0]})');
@@ -206,7 +273,7 @@ test('offline record persists, then sync removes it and counts once', async () =
   e.context.studentId = e.db.students[0].id;
   await e.run('record({method:"manual",studentId,confirmed:true})');
   assert.equal(e.idb.rows.get('queue').length, 1);
-  assert(e.node('#scan-result').innerHTML.includes('waiting to upload'));
+  assert(e.node('#scan-result').innerHTML.includes('Saved on this device'));
   assert.equal(D.eventSummary(e.db, e.event.id).safe, 0);
   e.setNetwork(true);
   e.run('state.online=true');
@@ -225,6 +292,18 @@ test('committed scan stays confirmed when the dashboard refresh subsequently fai
   assert(e.node('#scan-result').innerHTML.includes('saved to server'));
   assert.equal(e.idb.rows.get('queue').length, 0);
   assert.equal(D.eventSummary(e.db, e.event.id).safe, 1);
+});
+test('batch upload does not overwrite the latest scanner result', async () => {
+  const e = await ready();
+  e.setNetwork(true);
+  e.context.studentId = e.db.students[0].id;
+  e.run('state.page="scanner";state.online=true;render()');
+  await e.run('record({method:"manual",studentId,confirmed:true})');
+  const result = e.node('#scan-result').innerHTML;
+  await e.run('syncQueue()');
+  assert.equal(e.node('#scan-result').innerHTML, result);
+  assert.match(e.node('#toast').textContent, /Sync:/);
+  assert.equal(e.idb.rows.get('queue').length, 0);
 });
 test('unknown offline QR is not saved and shows a clear error', async () => {
   const e = await ready();
@@ -628,7 +707,7 @@ test('scan feedback separates the student name from the saved status', async () 
   await e.run('record({method:"manual",studentId,confirmed:true})');
   const result = e.node('#scan-result').innerHTML;
   assert.match(result, /<strong>[^<]+<\/strong>/);
-  assert.match(result, /waiting to upload/);
+  assert.match(result, /Saved on this device/);
   assert.equal(e.idb.rows.get('queue').length, 1);
 });
 

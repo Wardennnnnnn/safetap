@@ -37,10 +37,11 @@ const state = {
   scanner: null,
   search: '',
   filterBlock: '',
+  directoryBlock: '',
   filterStatus: '',
   filterProgram: '',
   busy: false,
-  panels: {building: false, records: false, readiness: false}
+  panels: {building: false, coverage: false, records: false, readiness: false}
 };
 
 const ICONS = {
@@ -635,6 +636,10 @@ document.addEventListener('change', async event => {
         present: el.checked
       });
       await refresh();
+    }
+    if (el.id === 'directory-block') {
+      state.directoryBlock = el.value;
+      $('#directory-body').innerHTML = directoryRows($('#directory-search').value);
     }
     if (el.id === 'filter-block') {
       state.filterBlock = el.value;
